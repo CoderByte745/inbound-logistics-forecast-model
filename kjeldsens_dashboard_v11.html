@@ -1,0 +1,1356 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kjeldsens Inbound Logistics</title>
+
+<style>
+  :root {
+    --bg: #F7F8FA; --card: #FFFFFF; --accent: #1F6FEB;
+    --green: #2E7D32; --green-bg: #E8F5E9;
+    --amber: #F9A825; --amber-text: #B7791F; --amber-bg: #FFF8E1;
+    --red: #C62828; --red-bg: #FFEBEE;
+    --grey: #6B7280; --border: #E5E7EB; --text: #111827;
+    --ease: cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: var(--bg); color: var(--text); padding: 16px; font-size: 13px;
+  }
+  .dashboard { max-width: 1440px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; }
+
+  /* ---------- Top nav ---------- */
+  .topbar {
+    max-width: 1440px; margin: 0 auto 16px;
+    display: flex; justify-content: space-between; align-items: center;
+    background: var(--card); border-radius: 10px; padding: 10px 20px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  }
+  .brand { font-size: 15px; font-weight: 700; letter-spacing: -0.01em; }
+  .brand small { font-weight: 500; color: var(--grey); margin-left: 8px; font-size: 12px; }
+  .nav { position: relative; display: flex; background: #F3F4F6; border-radius: 8px; padding: 3px; }
+  .nav-pill { position: absolute; top: 3px; bottom: 3px; left: 3px; background: var(--card); border-radius: 6px; box-shadow: 0 1px 2px rgba(0,0,0,0.1); transition: transform 0.35s var(--ease), width 0.35s var(--ease); }
+  .nav-btn { position: relative; z-index: 1; background: transparent; border: none; padding: 7px 18px; font-size: 12px; font-weight: 600; color: var(--grey); border-radius: 6px; cursor: pointer; transition: color 0.2s; }
+  .nav-btn.active { color: var(--text); }
+  .page { display: none; }
+  .page.active { display: block; animation: pageIn 0.45s var(--ease); }
+  @keyframes pageIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+
+  /* ---------- Shared ---------- */
+  @keyframes riseIn { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
+  .reveal { opacity: 0; animation: riseIn 0.7s var(--ease) forwards; animation-delay: calc(var(--i, 0) * 90ms); }
+  .card, .metric { transition: transform 0.25s var(--ease), box-shadow 0.25s var(--ease); }
+  .card:hover, .metric:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(17,24,39,0.08), 0 2px 4px rgba(17,24,39,0.04); }
+  .card.static:hover { transform: none; box-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04); }
+  .card { background: var(--card); border-radius: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04); padding: 16px 20px; }
+  .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+  .card-title { font-size: 13px; font-weight: 600; color: var(--grey); text-transform: uppercase; letter-spacing: 0.04em; }
+  .legend { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 11px; font-weight: 400; text-transform: none; letter-spacing: 0; color: var(--grey); }
+  .legend span { display: flex; align-items: center; gap: 6px; }
+  .swatch { width: 14px; height: 10px; border-radius: 2px; display: inline-block; }
+
+  .toggle-group { position: relative; display: flex; background: #F3F4F6; border-radius: 8px; padding: 3px; }
+  .toggle-pill { position: absolute; top: 3px; bottom: 3px; left: 3px; background: var(--card); border-radius: 6px; box-shadow: 0 1px 2px rgba(0,0,0,0.1); transition: transform 0.35s var(--ease), width 0.35s var(--ease); }
+  .toggle-btn { position: relative; z-index: 1; background: transparent; border: none; padding: 4px 12px; font-size: 11px; font-weight: 600; color: var(--grey); border-radius: 6px; cursor: pointer; transition: color 0.2s; }
+  .toggle-btn.active { color: var(--text); }
+
+  /* ---------- Dashboard ---------- */
+  .banner { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+  .metric { background: var(--card); border-radius: 10px; padding: 16px 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); border-left: 4px solid var(--border); display: flex; flex-direction: column; justify-content: flex-start; }
+  .metric.primary { border-left: 4px solid var(--amber); }
+  .metric-label { font-size: 12px; color: var(--grey); font-weight: 500; }
+  .metric-sub { margin: -6px 0 10px; font-size: 11px; color: var(--grey); line-height: 1.45; }
+  .metric-value { font-size: 28px; font-weight: 700; margin: 8px 0 12px; font-variant-numeric: tabular-nums; }
+  .metric.primary .metric-value { font-size: 32px; color: var(--amber); }
+  .unit { font-size: 14px; font-weight: 500; color: var(--grey); }
+  .pill { display: inline-block; font-size: 11px; font-weight: 600; padding: 4px 10px; border-radius: 12px; align-self: flex-start; white-space: nowrap; transition: background 0.3s, color 0.3s; }
+  .pill.green { background: var(--green-bg); color: var(--green); }
+  .pill.amber { background: var(--amber-bg); color: var(--amber-text); }
+  .pill.red { background: var(--red-bg); color: var(--red); }
+  .pill.grey { background: #F3F4F6; color: var(--grey); }
+  @keyframes pulseAmber { 0%, 100% { box-shadow: 0 0 0 0 rgba(249,168,37,0.45); } 50% { box-shadow: 0 0 0 7px rgba(249,168,37,0); } }
+  .pill.pulse { animation: pulseAmber 2.2s ease-out infinite; }
+
+  /* Stock meter: red | green | red */
+  .stock-meter { position: relative; margin: 4px 0 6px; padding-top: 22px; }
+  .meter-track { position: relative; height: 12px; border-radius: 6px; background: #EEF0F3; }
+  .zone { position: absolute; top: 0; bottom: 0; }
+  .meter-bar { position: absolute; inset: 0; border-radius: 6px; transform-origin: left center; background: linear-gradient(90deg, #E53935, #FDD835 46%, #43A047 60%, #FDD835 80%, #E53935); }
+  .play .meter-bar { animation: zoneIn 1s var(--ease) both; }
+  @keyframes zoneIn { from { transform: scaleX(0); opacity: 0; } to { transform: scaleX(1); opacity: 1; } }
+  .meter-line { position: absolute; top: -6px; bottom: -6px; border-left: 2px dashed #374151; z-index: 2; }
+  .play .meter-line { animation: fadeUp 0.6s var(--ease) 0.9s both; }
+  .meter-line .num { position: absolute; top: -17px; left: 0; transform: translateX(-50%); font-size: 10px; font-weight: 700; color: #374151; white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .meter-line .num small { font-weight: 500; color: var(--grey); margin-right: 2px; }
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+  .meter-dot { position: absolute; top: 50%; left: 0; z-index: 3; width: 18px; height: 18px; margin: -9px 0 0 -9px; border-radius: 50%; background: #fff; border: 3px solid #111827; box-shadow: 0 1px 4px rgba(0,0,0,0.3); transition: left 1.3s var(--ease); }
+  .meter-scale { display: flex; justify-content: space-between; font-size: 10px; color: var(--grey); margin-top: 7px; }
+
+  .stock-warning { display: flex; gap: 8px; align-items: flex-start; margin-top: 12px; padding: 10px 12px; border-radius: 8px; background: var(--red-bg); border: 1px solid #FFCDD2; color: var(--red); font-size: 12px; font-weight: 500; line-height: 1.45; animation: warnIn 0.5s var(--ease); }
+  .meter-note { font-size: 10px; color: var(--grey); margin-top: 4px; line-height: 1.4; }
+  .stock-warning[hidden] { display: none; }
+  .stock-warning .w-icon { flex: none; animation: wiggle 2.6s ease-in-out infinite; }
+  @keyframes warnIn { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: none; } }
+  @keyframes wiggle { 0%, 80%, 100% { transform: rotate(0); } 85% { transform: rotate(-12deg); } 90% { transform: rotate(10deg); } 95% { transform: rotate(-6deg); } }
+
+  .main-area { display: grid; grid-template-columns: 65% 35%; gap: 16px; }
+  .col-right { display: flex; flex-direction: column; gap: 16px; }
+
+  .chart-wrap { width: 100%; margin-bottom: 16px; position: relative; padding-top: 10px; }
+  svg { display: block; width: 100%; height: auto; overflow: visible; }
+  .tooltip { position: absolute; background: rgba(17,24,39,0.95); color: #fff; padding: 10px 14px; border-radius: 8px; font-size: 12px; pointer-events: none; opacity: 0; transition: opacity 0.15s, transform 0.15s, left 0.12s ease-out; transform: translateY(10px); z-index: 10; box-shadow: 0 4px 6px rgba(0,0,0,0.1); min-width: 200px; }
+  .tooltip.visible { opacity: 1; transform: translateY(0); }
+  .tooltip-title { font-weight: 700; margin-bottom: 6px; border-bottom: 1px solid rgba(255,255,255,0.2); padding-bottom: 4px; }
+  .tooltip-row { display: flex; justify-content: space-between; gap: 14px; margin-bottom: 3px; }
+  .tooltip-row span:first-child { color: #9CA3AF; }
+  .tooltip-row span:last-child { font-weight: 600; }
+  .tracker-line { position: absolute; top: 10px; bottom: 40px; width: 1px; background: rgba(156,163,175,0.5); pointer-events: none; opacity: 0; z-index: 5; transition: opacity 0.15s, left 0.12s ease-out; }
+  .tracker-line.visible { opacity: 1; }
+
+  @keyframes drawLine { to { stroke-dashoffset: 0; } }
+  @keyframes fadeInBand { from { opacity: 0; } to { opacity: 0.55; } }
+  @keyframes popIn { from { opacity: 0; transform: scale(0); } to { opacity: 1; transform: scale(1); } }
+  .animated-line { stroke-dasharray: 3000; stroke-dashoffset: 3000; animation: drawLine 1.6s var(--ease) forwards; }
+  .animated-band { animation: fadeInBand 1s ease-out 0.3s forwards; }
+  .marker { transform-box: fill-box; transform-origin: center; opacity: 0; animation: popIn 0.4s var(--ease) forwards; cursor: pointer; transition: r 0.15s; }
+  .marker:hover { r: 6; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  th { text-align: left; font-weight: 600; color: var(--grey); padding: 8px 10px; border-bottom: 1px solid var(--border); font-size: 11px; text-transform: uppercase; letter-spacing: 0.03em; white-space: nowrap; }
+  td { padding: 10px 10px; border-bottom: 1px solid #F3F4F6; vertical-align: middle; }
+  tr:last-child td { border-bottom: none; }
+  tbody tr { transition: background 0.15s; }
+  tbody tr:hover { background: #F9FAFB; }
+  tbody tr.row-in { opacity: 0; animation: rowIn 0.45s var(--ease) forwards; animation-delay: calc(var(--r, 0) * 45ms + 250ms); }
+  @keyframes rowIn { from { opacity: 0; transform: translateX(-8px); } to { opacity: 1; transform: translateX(0); } }
+  .table-footer { margin-top: 12px; font-size: 11px; color: var(--grey); }
+  .empty-cell { text-align: center; color: var(--grey); padding: 22px 10px; }
+  .yes { color: var(--green); font-weight: 600; }
+  .no { color: var(--red); font-weight: 600; }
+  .txt-red { color: var(--red); font-weight: 600; }
+
+  /* Batch expiry colouring */
+  tr.exp-red { background: #FFF5F5; }
+  tr.exp-red:hover { background: #FFEBEE; }
+  tr.exp-red td:first-child { box-shadow: inset 3px 0 0 var(--red); }
+  tr.exp-amber td:first-child { box-shadow: inset 3px 0 0 var(--amber); }
+  tr.exp-green td:first-child { box-shadow: inset 3px 0 0 #66BB6A; }
+  .exp-legend { display: flex; gap: 14px; margin-top: 12px; font-size: 11px; color: var(--grey); flex-wrap: wrap; }
+  .exp-legend i { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 5px; }
+
+  .bottom-area { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .hist-summary { font-size: 12px; color: var(--grey); margin: 0 0 12px; line-height: 1.5; }
+  .hist-summary b { color: var(--text); }
+  .hist-grid { display: grid; grid-template-columns: 1.2fr 1fr; gap: 20px; align-items: start; }
+  .hist-grid .chart-wrap { margin-bottom: 0; }
+  @media (max-width: 1100px) { .hist-grid { grid-template-columns: 1fr; } }
+  .footer { display: flex; justify-content: space-between; align-items: center; font-size: 11px; color: var(--grey); padding: 8px 4px; gap: 12px; flex-wrap: wrap; }
+  .footer .conf { color: var(--amber-text); font-weight: 500; }
+  .badge { background: #F3F4F6; padding: 4px 12px; border-radius: 12px; font-weight: 500; }
+
+  /* ---------- Data entry ---------- */
+  .entry { max-width: 1440px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; }
+  .entry-head { display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 12px; }
+  .entry-head h1 { font-size: 20px; font-weight: 700; letter-spacing: -0.01em; }
+  .entry-head p { color: var(--grey); margin-top: 4px; font-size: 12px; }
+  .seg { position: relative; display: flex; background: #E5E7EB; border-radius: 10px; padding: 4px; }
+  .seg-pill { position: absolute; top: 4px; bottom: 4px; left: 4px; background: var(--card); border-radius: 7px; box-shadow: 0 1px 3px rgba(0,0,0,0.12); transition: transform 0.35s var(--ease), width 0.35s var(--ease); }
+  .seg-btn { position: relative; z-index: 1; background: transparent; border: none; padding: 9px 20px; font-size: 13px; font-weight: 600; color: var(--grey); cursor: pointer; border-radius: 7px; display: flex; align-items: center; gap: 8px; transition: color 0.2s; }
+  .seg-btn.active { color: var(--text); }
+  .count { background: #F3F4F6; color: var(--grey); font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 10px; min-width: 20px; text-align: center; }
+  .seg-btn.active .count { background: var(--accent); color: #fff; }
+  .entry-grid { display: grid; grid-template-columns: 1.15fr 0.85fr; gap: 16px; align-items: start; }
+  .section-view { display: none; flex-direction: column; gap: 16px; }
+  .section-view.active { display: flex; animation: pageIn 0.4s var(--ease); }
+  .form-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px 16px; }
+  .field { display: flex; flex-direction: column; gap: 5px; }
+  .field.wide { grid-column: 1 / -1; }
+  .field label { font-size: 11px; font-weight: 600; color: var(--grey); }
+  .field label .req { color: var(--red); margin-left: 2px; }
+  .field input, .field select, .field textarea { font: inherit; font-size: 13px; padding: 9px 11px; border: 1px solid var(--border); border-radius: 8px; background: #fff; color: var(--text); transition: border-color 0.2s, box-shadow 0.2s; }
+  .field textarea { resize: vertical; min-height: 56px; }
+  .field input:focus, .field select:focus, .field textarea:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(31,111,235,0.15); }
+  .field.invalid input, .field.invalid select { border-color: var(--red); background: var(--red-bg); animation: shake 0.35s; }
+  @keyframes shake { 20%, 60% { transform: translateX(-4px); } 40%, 80% { transform: translateX(4px); } }
+  .form-actions { display: flex; gap: 10px; margin-top: 16px; }
+  .btn { font: inherit; font-size: 13px; font-weight: 600; border: none; border-radius: 8px; padding: 10px 18px; cursor: pointer; transition: transform 0.15s, box-shadow 0.2s, background 0.2s; }
+  .btn:active { transform: scale(0.97); }
+  .btn.primary { background: var(--accent); color: #fff; }
+  .btn.primary:hover { background: #1a5fd0; box-shadow: 0 4px 12px rgba(31,111,235,0.3); }
+  .btn.ghost { background: #F3F4F6; color: var(--text); }
+  .btn.ghost:hover { background: #E5E7EB; }
+  .btn.small { padding: 6px 12px; font-size: 12px; }
+  .dropzone { border: 2px dashed #CBD5E1; border-radius: 10px; padding: 28px 16px; text-align: center; background: #FAFBFC; cursor: pointer; transition: border-color 0.2s, background 0.2s, transform 0.2s; }
+  .dropzone:hover, .dropzone.drag { border-color: var(--accent); background: #F0F6FF; }
+  .dropzone.drag { transform: scale(1.01); }
+  .dz-icon { font-size: 26px; display: inline-block; animation: bob 2.4s ease-in-out infinite; }
+  @keyframes bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
+  .dz-title { font-weight: 600; margin-top: 8px; }
+  .dz-sub { color: var(--grey); font-size: 11px; margin-top: 4px; }
+  .upload-meta { margin-top: 12px; display: flex; gap: 8px; flex-wrap: wrap; }
+  .hint { margin-top: 12px; font-size: 11px; color: var(--grey); line-height: 1.5; }
+  .hint code { background: #F3F4F6; padding: 1px 5px; border-radius: 4px; font-size: 11px; }
+  .log-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+  .table-scroll { overflow-x: auto; }
+  .empty { text-align: center; color: var(--grey); padding: 28px 0; font-size: 12px; }
+  .del { background: transparent; border: none; color: #9CA3AF; font-size: 16px; cursor: pointer; border-radius: 6px; width: 26px; height: 26px; transition: background 0.15s, color 0.15s; }
+  .del:hover { background: var(--red-bg); color: var(--red); }
+  tr.new-row { animation: flash 1.6s ease-out; }
+  @keyframes flash { 0% { background: #DBEAFE; transform: translateX(-12px); opacity: 0; } 25% { transform: none; opacity: 1; } 100% { background: transparent; } }
+  .toast { position: fixed; bottom: 24px; left: 50%; transform: translate(-50%, 30px); background: #111827; color: #fff; padding: 11px 18px; border-radius: 10px; font-size: 12px; font-weight: 500; opacity: 0; pointer-events: none; transition: opacity 0.3s, transform 0.3s var(--ease); z-index: 50; box-shadow: 0 8px 24px rgba(0,0,0,0.2); max-width: 90vw; }
+  .toast.show { opacity: 1; transform: translate(-50%, 0); }
+  .toast.error { background: var(--red); }
+
+  /* ---------- Recommended order quantity ---------- */
+  .qty-row { display: flex; gap: 10px; align-items: stretch; flex-wrap: wrap; }
+  .qty-row input { flex: 0 0 150px; width: 150px; }
+  .rec { flex: 1; min-width: 210px; border: 1px solid #BBDEFB; background: #F0F7FF; border-radius: 8px; padding: 7px 11px; font-size: 11px; color: var(--grey); line-height: 1.45; }
+  .rec-main { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; color: var(--text); }
+  .rec-main b { font-size: 16px; color: var(--accent); font-variant-numeric: tabular-nums; }
+  .rec-lbl { font-weight: 600; font-size: 11px; }
+  .rec .btn.small { padding: 3px 10px; font-size: 11px; margin-left: auto; }
+  .rec-flag { font-weight: 600; }
+  .rec-flag.ok { color: var(--green); } .rec-flag.warn { color: var(--amber-text); }
+
+  /* ---------- Test clock ---------- */
+  .sim-pill { display: none; font-size: 11px; font-weight: 700; padding: 5px 12px; border-radius: 14px; background: var(--amber-bg); color: var(--amber-text); border: 1px solid #FFE082; cursor: pointer; white-space: nowrap; }
+  .sim-pill.on { display: inline-block; }
+  .sim-fab { position: fixed; right: 16px; bottom: 16px; z-index: 40; display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
+  .sim-toggle { font: inherit; font-size: 12px; font-weight: 600; border: none; border-radius: 20px; padding: 9px 14px; cursor: pointer; background: #111827; color: #fff; box-shadow: 0 4px 14px rgba(0,0,0,0.25); transition: transform 0.15s; }
+  .sim-toggle:active { transform: scale(0.96); }
+  .sim-toggle.on { background: var(--amber-text); }
+  .sim-panel { width: 292px; background: var(--card); border-radius: 12px; padding: 14px 16px; box-shadow: 0 12px 32px rgba(17,24,39,0.22), 0 0 0 1px var(--border); display: none; }
+  .sim-panel.open { display: block; animation: pageIn 0.25s var(--ease); }
+  .sim-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+  .sim-head b { font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--grey); }
+  .sim-x { background: transparent; border: none; font-size: 18px; line-height: 1; color: #9CA3AF; cursor: pointer; }
+  .sim-date { width: 100%; font: inherit; font-size: 14px; font-weight: 600; padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px; }
+  .sim-date:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(31,111,235,0.15); }
+  .sim-steps, .sim-presets { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .sim-steps button { flex: 1; min-width: 38px; }
+  .sim-chip { font: inherit; font-size: 11px; font-weight: 600; border: 1px solid var(--border); background: #F9FAFB; color: var(--text); border-radius: 14px; padding: 5px 10px; cursor: pointer; transition: background 0.15s; }
+  .sim-chip:hover { background: #EEF2FF; }
+  .sim-status { margin-top: 10px; font-size: 11px; color: var(--grey); line-height: 1.5; }
+  .sim-reset { width: 100%; margin-top: 10px; }
+  .sim-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--grey); margin-bottom: 6px; }
+  .sim-sep { border-top: 1px solid var(--border); margin: 14px 0 10px; }
+  .sim-leadrow { display: flex; align-items: center; gap: 6px; }
+  .sim-leadrow .sim-lead { flex: 1; min-width: 0; text-align: center; padding: 6px 4px; }
+  .sim-panel { max-height: calc(100vh - 90px); overflow-y: auto; }
+
+  @media (max-width: 1100px) {
+    .main-area, .entry-grid { grid-template-columns: 1fr; }
+    .banner { grid-template-columns: 1fr; }
+    .bottom-area { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 600px) { .form-grid { grid-template-columns: 1fr; } .seg-btn { padding: 9px 12px; } }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: 0.01ms !important; animation-delay: 0ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
+  }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="brand">Kjeldsens<small>Inbound Logistics</small></div>
+  <span class="sim-pill" id="simPill" title="Click to edit the test date"></span>
+  <div class="nav" id="nav">
+    <div class="nav-pill" id="navPill"></div>
+    <button class="nav-btn active" data-page="dashboard">Dashboard</button>
+    <button class="nav-btn" data-page="entry">Data Entry</button>
+  </div>
+</div>
+
+<!-- ================= PAGE 1: DASHBOARD ================= -->
+<div class="page active" id="page-dashboard">
+<div class="dashboard">
+
+  <div class="banner">
+    <div class="metric reveal" style="--i:0">
+      <div class="metric-label">Current Stock</div>
+      <div class="metric-value"><span id="v-stock" data-count="0">0</span> <span class="unit">units</span></div>
+
+      <div class="stock-meter" id="stockMeter">
+        <div class="meter-track">
+          <div class="meter-bar" id="meterBar"></div>
+          <div class="meter-line" id="lnMin"><span class="num"><small>Min</small><span id="numMin">930</span></span></div>
+          <div class="meter-line" id="lnMax"><span class="num"><small>Max</small><span id="numMax">1,600</span></span></div>
+          <div class="meter-dot" id="meterDot"></div>
+        </div>
+        <div class="meter-scale"><span>0</span><span id="scaleMax">2,000</span></div>
+        <div class="meter-note" id="meterNote"></div>
+      </div>
+
+      <span class="pill green" id="stockPill">OK · within optimal range</span>
+      <div class="stock-warning" id="stockWarning" hidden>
+        <span class="w-icon">⚠️</span><span id="stockWarningText"></span>
+      </div>
+    </div>
+
+    <div class="metric reveal" style="--i:1">
+      <div class="metric-label">In-Transit</div>
+      <div class="metric-value"><span id="v-transit" data-count="0">0</span> <span class="unit">units</span></div>
+      <span class="pill grey" id="transitPill">No open orders</span>
+    </div>
+
+    <div class="metric primary reveal" style="--i:2">
+      <div class="metric-label" id="cnyLabel">Days to CNY Order Deadline</div>
+      <div class="metric-value"><span id="v-cny" data-count="22">22</span> <span class="unit">days</span></div>
+      <div class="metric-sub" id="cnySub"></div>
+      <span class="pill amber pulse" id="cnyPill">Prepare order</span>
+    </div>
+  </div>
+
+  <div class="main-area">
+    <div class="card reveal" style="--i:3">
+      <div class="card-header">
+        <div class="card-title">Expected Ordered Quantity <span id="chartRange" style="text-transform:none;letter-spacing:0;font-weight:500;margin-left:6px"></span></div>
+        <div class="toggle-group" id="toggleGroup">
+          <div class="toggle-pill" id="togglePill"></div>
+          <button class="toggle-btn" onclick="setView('3M')">3M</button>
+          <button class="toggle-btn active" onclick="setView('6M')">6M</button>
+          <button class="toggle-btn" onclick="setView('12M')">12M</button>
+        </div>
+      </div>
+      <div class="card-title" style="margin-bottom:16px;">
+        <span class="legend">
+          <span><span class="swatch" style="background:#BBDEFB;"></span><span id="legendExp">Expected ordered quantity</span></span>
+          <span><span class="swatch" style="background:#1F6FEB;height:4px;"></span>Ordered quantity (logged)</span>
+        </span>
+      </div>
+      <div class="chart-wrap" id="chartWrap">
+        <div class="tooltip" id="tooltip">
+          <div class="tooltip-title" id="tt-title">Period</div>
+          <div class="tooltip-row"><span>Serves demand:</span> <span id="tt-need">—</span></div>
+          <div class="tooltip-row"><span>Ordered Qty:</span> <span id="tt-ord">0</span></div>
+          <div class="tooltip-row"><span>Expected Low:</span> <span id="tt-low">0</span></div>
+          <div class="tooltip-row"><span>Expected High:</span> <span id="tt-high">0</span></div>
+        </div>
+        <div class="tracker-line" id="trackerLine"></div>
+        <svg id="forecastChart" viewBox="0 0 720 300" preserveAspectRatio="xMidYMid meet">
+          <g id="chart-axes"></g>
+          <g id="chart-cny"></g>
+          <g id="chart-today" pointer-events="none"></g>
+          <path id="area-band" fill="#BBDEFB" opacity="0" d=""/>
+          <path id="dashed-high" fill="none" stroke="#64B5F6" stroke-width="1.5" stroke-dasharray="4 4" d=""/>
+          <path id="dashed-low"  fill="none" stroke="#90CAF9" stroke-width="1.5" stroke-dasharray="4 4" d=""/>
+          <path id="solid-line" fill="none" stroke="#1F6FEB" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" d=""/>
+          <g id="line-markers"></g>
+          <g id="x-axis-labels" font-size="10" fill="#6B7280" text-anchor="middle"></g>
+          <g id="hover-zones" cursor="crosshair"></g>
+        </svg>
+      </div>
+      <table>
+        <thead><tr><th>Order Period</th><th>Expected Ordered Qty</th><th>Ordered Qty</th><th>In Range?</th><th>Serves Demand Of</th></tr></thead>
+        <tbody id="forecast-table-body"></tbody>
+      </table>
+      <div class="table-footer" id="table-footer-text">Showing next 6 months.</div>
+    </div>
+
+    <div class="col-right">
+      <div class="card reveal" style="--i:4; flex: 1;">
+        <div class="card-title">Open Orders — In Transit</div>
+        <table>
+          <thead><tr><th>Order ID</th><th>Qty</th><th>Expected Arrival</th><th>Days Elapsed</th><th>Remaining Lead Time</th></tr></thead>
+          <tbody id="open-orders-body"></tbody>
+        </table>
+        <div class="table-footer" id="lead-footer">Avg actual lead time: — (plan: 65)</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card reveal" style="--i:5">
+    <div class="card-header">
+      <div class="card-title">Historic Ordered Quantity — Expected vs Actual</div>
+      <div class="toggle-group" id="histToggle">
+        <div class="toggle-pill" id="histPill"></div>
+        <button class="toggle-btn" data-h="3M">Last 3M</button>
+        <button class="toggle-btn active" data-h="6M">Last 6M</button>
+        <button class="toggle-btn" data-h="12M">Last 12M</button>
+      </div>
+    </div>
+    <div class="card-title" style="margin-bottom:12px;">
+      <span class="legend">
+        <span><span class="swatch" style="background:#BBDEFB;"></span>Expected range (past order periods)</span>
+        <span><span class="swatch" style="background:#1F6FEB;height:4px;"></span>Actual ordered (within range)</span>
+        <span><span class="swatch" style="background:#C62828;height:8px;width:8px;border-radius:50%;"></span>Actual ordered (outside range)</span>
+      </span>
+    </div>
+    <div class="empty" id="hist-empty" hidden>No completed order periods yet. History appears here once periods have passed (try the 🧪 test date).</div>
+    <div id="hist-content">
+      <div class="hist-summary" id="hist-summary"></div>
+      <div class="hist-grid">
+        <div class="chart-wrap"><svg id="histChart" viewBox="0 0 720 300" preserveAspectRatio="xMidYMid meet"></svg></div>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Period</th><th>Expected</th><th>Actual</th><th>Result</th></tr></thead>
+            <tbody id="hist-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="bottom-area">
+    <div class="card reveal" style="--i:6">
+      <div class="card-title">Inbound Pending — Next 14 Days</div>
+      <table>
+        <thead><tr><th>Order ID</th><th>Expected Arrival</th><th>Qty</th><th>Transport Mode</th><th>Status</th></tr></thead>
+        <tbody id="inbound-body"></tbody>
+      </table>
+    </div>
+    <div class="card reveal" style="--i:7">
+      <div class="card-title">Batch Expiry Alerts</div>
+      <table>
+        <thead><tr><th>Batch ID</th><th>Qty</th><th>Expiry Date</th><th>Remaining Shelf Life</th></tr></thead>
+        <tbody id="expiry-body"></tbody>
+      </table>
+      <div class="exp-legend">
+        <span><i style="background:var(--red)"></i>6 months or less</span>
+        <span><i style="background:var(--amber)"></i>7–12 months</span>
+        <span><i style="background:#66BB6A"></i>Over 12 months</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer reveal" style="--i:7">
+    <span id="asOf">Data as of —</span>
+    <span class="conf">Forecast confidence: CNY multiplier 2.8× — based on limited history, review weekly</span>
+    <span class="badge">Dashboard is view-only. Log records on the Data Entry page.</span>
+  </div>
+</div>
+</div>
+
+<!-- ================= PAGE 2: DATA ENTRY ================= -->
+<div class="page" id="page-entry">
+<div class="entry">
+  <div class="entry-head">
+    <div>
+      <h1>Data Entry</h1>
+      <p>Log records one at a time, or upload an Excel / CSV file. The dashboard updates from these records. Saved in this browser.</p>
+    </div>
+    <div class="seg" id="seg">
+      <div class="seg-pill" id="segPill"></div>
+      <button class="seg-btn active" data-sec="orders">Orders <span class="count" id="count-orders">0</span></button>
+      <button class="seg-btn" data-sec="deliveries">Deliveries <span class="count" id="count-deliveries">0</span></button>
+      <button class="seg-btn" data-sec="dispatches">Dispatches <span class="count" id="count-dispatches">0</span></button>
+    </div>
+  </div>
+  <div id="sections"></div>
+</div>
+</div>
+
+<div class="sim-fab">
+  <div class="sim-panel" id="simPanel">
+    <div class="sim-head"><b>Test controls</b><button class="sim-x" id="simClose" aria-label="Close">×</button></div>
+    <div class="sim-label">Test date</div>
+    <input type="date" class="sim-date" id="simInput">
+    <div class="sim-steps">
+      <button class="sim-chip" data-step="-30">−30d</button><button class="sim-chip" data-step="-7">−7d</button><button class="sim-chip" data-step="-1">−1d</button>
+      <button class="sim-chip" data-step="1">+1d</button><button class="sim-chip" data-step="7">+7d</button><button class="sim-chip" data-step="30">+30d</button>
+    </div>
+    <div class="sim-presets">
+      <button class="sim-chip" id="jumpDeadline" data-jump="2026-11-23">CNY order deadline</button>
+      <button class="sim-chip" id="jumpAfter" data-jump="2026-11-24">Day after deadline</button>
+      <button class="sim-chip" data-jump="2027-01-05">Peak demand starts</button>
+      <button class="sim-chip" data-jump="2027-04-15">Mid April</button>
+      <button class="sim-chip" data-jump="2027-10-17">Next CNY window</button>
+    </div>
+    <div class="sim-status" id="simStatus"></div>
+    <button class="btn ghost small sim-reset" id="simReset">Reset to real date</button>
+    <div class="sim-sep"></div>
+    <div class="sim-label">Lead time (days)</div>
+    <div class="sim-leadrow">
+      <button class="sim-chip" data-lead="-5">−5</button><button class="sim-chip" data-lead="-1">−1</button>
+      <input type="number" class="sim-date sim-lead" id="leadInput" min="1" max="365" step="1" inputmode="numeric">
+      <button class="sim-chip" data-lead="1">+1</button><button class="sim-chip" data-lead="5">+5</button>
+    </div>
+    <div class="sim-status" id="leadStatus"></div>
+    <button class="btn ghost small sim-reset" id="leadReset">Reset lead time to 65 days</button>
+  </div>
+  <button class="sim-toggle" id="simToggle">🧪 Test date</button>
+</div>
+
+<input type="file" id="fileInput" accept=".xlsx,.xls,.csv" hidden>
+<div class="toast" id="toast"></div>
+
+<script>
+/* =====================================================
+   SHARED HELPERS
+   ===================================================== */
+const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const DAY = 86400000;
+const fmt = n => Number(n).toLocaleString('en-US');
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const norm = s => String(s).toLowerCase().replace(/[^a-z0-9]/g, '');
+const startOfDay = d => new Date(d.getFullYear(), d.getMonth(), d.getDate());
+const parseISO = s => {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(s || ''));
+  if (!m) return null;
+  const d = new Date(+m[1], +m[2] - 1, +m[3]);
+  return isNaN(d) ? null : d;
+};
+const fmtDate = d => `${String(d.getDate()).padStart(2, '0')} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
+const isoOf = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+/* Test clock: when simDate is set, the whole dashboard behaves as if it were that day. */
+let simDate = null;
+const nowDate = () => simDate ? new Date(simDate) : new Date();
+const todayISO = () => isoOf(nowDate());
+const realTodayISO = () => isoOf(new Date());
+const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+function movePill(pillId, activeEl, pad) {
+  const pill = document.getElementById(pillId);
+  if (!activeEl || !activeEl.offsetWidth) return;
+  pill.style.width = activeEl.offsetWidth + 'px';
+  pill.style.transform = `translateX(${activeEl.offsetLeft - pad}px)`;
+}
+function showPage(name) {
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.page === name));
+  document.querySelectorAll('.page').forEach(p => p.classList.toggle('active', p.id === 'page-' + name));
+  movePill('navPill', document.querySelector('.nav-btn.active'), 3);
+  if (name === 'dashboard') renderDashboard();
+  else movePill('segPill', document.querySelector('.seg-btn.active'), 4);
+  try { history.replaceState(null, '', '#' + name); } catch (e) {}
+}
+document.querySelectorAll('.nav-btn').forEach(b => b.addEventListener('click', () => showPage(b.dataset.page)));
+
+/* =====================================================
+   RECORD STORE (shared by both pages)
+   ===================================================== */
+const STORE_KEY = 'kjeldsens_records_v1';
+let records = { orders: [], deliveries: [], dispatches: [] };
+try { const s = JSON.parse(localStorage.getItem(STORE_KEY)); if (s) records = Object.assign(records, s); } catch (e) {}
+const persist = () => { try { localStorage.setItem(STORE_KEY, JSON.stringify(records)); } catch (e) {} };
+
+/* Records visible to the dashboard. With a test date active, anything dated after it
+   has not happened yet, so it is hidden (the Data Entry page always shows everything). */
+function recordsAsOf() {
+  if (!simDate) return records;
+  const cut = isoOf(simDate), keep = (arr, k) => arr.filter(r => { const d = String(r[k] || '').slice(0, 10); return !d || d <= cut; });
+  return { orders: keep(records.orders, 'orderDate'), deliveries: keep(records.deliveries, 'receivedDate'), dispatches: keep(records.dispatches, 'dispatchDate') };
+}
+const hiddenCount = () => { const R = recordsAsOf(); return ['orders', 'deliveries', 'dispatches'].reduce((n, k) => n + records[k].length - R[k].length, 0); };
+
+/* =====================================================
+   DASHBOARD
+   ===================================================== */
+// Forecast (prediction) numbers — kept as-is
+const forecastSets = {
+  '3M': [
+    { date: 'Nov 1', low: 200, high: 300 }, { date: 'Nov 2', low: 200, high: 310 },
+    { date: 'Dec 1', low: 220, high: 350 }, { date: 'Dec 2', low: 250, high: 450 },
+    { date: 'Jan 1', low: 300, high: 600 }, { date: 'Jan 2', low: 300, high: 650 }
+  ],
+  '6M': [
+    { date: 'Nov 1', low: 200, high: 300 }, { date: 'Nov 2', low: 200, high: 310 },
+    { date: 'Dec 1', low: 220, high: 350 }, { date: 'Dec 2', low: 250, high: 450 },
+    { date: 'Jan 1', low: 300, high: 600 }, { date: 'Jan 2', low: 300, high: 650 },
+    { date: 'Feb 1', low: 250, high: 450 }, { date: 'Feb 2', low: 220, high: 380 },
+    { date: 'Mar 1', low: 180, high: 280 }, { date: 'Mar 2', low: 170, high: 260 },
+    { date: 'Apr 1', low: 160, high: 240 }, { date: 'Apr 2', low: 150, high: 230 }
+  ],
+  '12M': [
+    { date: 'Nov', low: 200, high: 300 }, { date: 'Dec', low: 220, high: 450 },
+    { date: 'Jan', low: 300, high: 650 }, { date: 'Feb', low: 250, high: 450 },
+    { date: 'Mar', low: 180, high: 280 }, { date: 'Apr', low: 160, high: 240 },
+    { date: 'May', low: 150, high: 220 }, { date: 'Jun', low: 140, high: 210 },
+    { date: 'Jul', low: 150, high: 220 }, { date: 'Aug', low: 160, high: 250 },
+    { date: 'Sep', low: 180, high: 300 }, { date: 'Oct', low: 200, high: 320 }
+  ]
+};
+const FORECAST_START = { year: 2026, month: 10 };       // Nov 2026
+let OPTIMAL = { min: 0, max: 0 };                // optimal stock range (units)
+const DEFAULT_LEAD_DAYS = 65;
+let PLAN_LEAD_DAYS = DEFAULT_LEAD_DAYS;          // planning lead time; can be changed from the test widget
+let lastAvgLead = null;
+let currentData = [], currentTf = '6M', ordersOutside = 0;
+
+/* ---- derive everything from logged records ---- */
+function computeState() {
+  const today = startOfDay(nowDate()), R = recordsAsOf();
+  const q = r => Number(r.qty) || 0;
+
+  const receivedAll = {};    // by order id (any condition)
+  let usableReceived = 0;
+  R.deliveries.forEach(d => {
+    receivedAll[d.orderId] = (receivedAll[d.orderId] || 0) + q(d);
+    if (d.condition !== 'Damaged') usableReceived += q(d);
+  });
+  const dispatched = R.dispatches.reduce((s, r) => s + q(r), 0);
+  const stock = Math.max(0, usableReceived - dispatched);
+
+  const open = R.orders
+    .map(o => ({ ...o, remaining: q(o) - (receivedAll[o.id] || 0) }))
+    .filter(o => o.remaining > 0)
+    .sort((a, b) => String(a.eta).localeCompare(String(b.eta)));
+  // In-transit = total ordered − total delivered
+  const totalOrdered = R.orders.reduce((s, o) => s + q(o), 0);
+  const totalDelivered = R.deliveries.reduce((s, d) => s + q(d), 0);
+  const inTransit = Math.max(0, totalOrdered - totalDelivered);
+
+  // actual lead time
+  const lead = [];
+  R.deliveries.forEach(d => {
+    const o = R.orders.find(x => x.id === d.orderId);
+    const a = o && parseISO(o.orderDate), b = parseISO(d.receivedDate);
+    if (a && b && b >= a) lead.push((b - a) / DAY);
+  });
+  const avgLead = lead.length ? Math.round(lead.reduce((s, x) => s + x, 0) / lead.length) : null;
+
+  // batches
+  const batches = {};
+  R.deliveries.forEach(d => {
+    if (d.condition === 'Damaged' || !d.batchId) return;
+    const b = batches[d.batchId] || (batches[d.batchId] = { id: d.batchId, qty: 0, expiry: null });
+    b.qty += q(d);
+    const e = parseISO(d.expiry);
+    if (e && (!b.expiry || e < b.expiry)) b.expiry = e;
+  });
+  R.dispatches.forEach(d => { if (d.batchId && batches[d.batchId]) batches[d.batchId].qty -= q(d); });
+  const expiring = Object.values(batches).filter(b => b.qty > 0 && b.expiry).sort((a, b) => a.expiry - b.expiry);
+
+  return { today, stock, open, inTransit, avgLead, expiring };
+}
+
+/* ---- Demand model (shared by the stock meter and the chart) ----
+   Each forecast value is the demand over ~15 days, so rate/day = value / 15.
+   Nov–Apr use the half-month figures (6M set); May–Oct use the monthly figures (12M set).
+   The seasonal cycle is assumed to repeat after 12 months so the shifted windows never run out of data. */
+function demandRate(dt) {
+  const m = (dt.getFullYear() - FORECAST_START.year) * 12 + dt.getMonth() - FORECAST_START.month;
+  let f;
+  if (m < 0) f = forecastSets['6M'][0];
+  else { const k = m % 12; f = k < 6 ? forecastSets['6M'][k * 2 + (dt.getDate() > 15 ? 1 : 0)] : forecastSets['12M'][k]; }
+  return { lo: f.low / 15, hi: f.high / 15 };
+}
+function demandBetween(start, end) {                       // [start, end)
+  let lo = 0, hi = 0;
+  for (let t = new Date(start); t < end; t.setDate(t.getDate() + 1)) { const r = demandRate(t); lo += r.lo; hi += r.hi; }
+  return { lo, hi };
+}
+const round10 = n => Math.round(n / 10) * 10;
+const addDays = (d, n) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + n);
+
+/* Optimal stock range = expected demand from today over the lead-time window. */
+function computeOptimal(today) {
+  const r = demandBetween(today, addDays(today, PLAN_LEAD_DAYS));
+  return { min: round10(r.lo), max: round10(r.hi) };
+}
+
+/* ---- Chinese New Year calendar (actual dates) ----
+   For each CNY: the demand peak runs from 36 days before to 5 days before CNY (for CNY 6 Feb 2027 that is 1 Jan – 1 Feb 2027).
+   The order window is that peak shifted back by the lead time, and the order deadline is the lead time plus a
+   10-day buffer before CNY (6 Feb 2027 → 23 Nov 2026). The card follows the CNY whose order window began most recently. */
+const CNY_DATES = [new Date(2026, 1, 17), new Date(2027, 1, 6), new Date(2028, 0, 26), new Date(2029, 1, 13),
+                   new Date(2030, 1, 3), new Date(2031, 0, 23), new Date(2032, 1, 11), new Date(2033, 0, 31)];
+const CNY_ORDER_BUFFER_DAYS = 10;
+function cnyInfo(c) {
+  const peak = { start: addDays(c, -36), end: addDays(c, -5) };
+  return { cny: c, peak, windowStart: addDays(peak.start, -PLAN_LEAD_DAYS), windowEnd: addDays(peak.end, -PLAN_LEAD_DAYS),
+           deadline: addDays(c, -(PLAN_LEAD_DAYS + CNY_ORDER_BUFFER_DAYS)) };
+}
+function activeCny(today) {
+  const list = CNY_DATES.map(cnyInfo);
+  let cur = list[0];
+  list.forEach(x => { if (x.windowStart <= today) cur = x; });
+  return { cur, next: list.find(x => x.windowStart > today) || null };
+}
+const cnyPeakFor = Y => { const c = CNY_DATES.find(d => d.getFullYear() === Y + 1); return c ? cnyInfo(c).peak : null; };   // peak after a Nov–Oct chart cycle starting in year Y
+
+/* Expected ordered quantity: to have goods on the shelf when demand happens, an order must be
+   placed one lead time earlier. For each order period, take the demand of the window that starts
+   PLAN_LEAD_DAYS later — i.e. the demand curve shifted back by the lead time. */
+const TF_MONTHS = { '3M': 3, '6M': 6, '12M': 12 };
+/* The chart shows the cycle starting Nov 2026. Once today (or the test date) reaches the end of
+   the window for a view, that view moves on to the same cycle one year later (the seasonal pattern repeats). */
+function chartYear(tf) {
+  const today = startOfDay(nowDate()); let y = FORECAST_START.year;
+  while (today >= new Date(y, FORECAST_START.month + TF_MONTHS[tf], 1)) y++;
+  return y;
+}
+function periodRange(tf, i) {                              // [start, end) of order period i
+  const Y = chartYear(tf), M = FORECAST_START.month;
+  if (tf === '12M') return [new Date(Y, M + i, 1), new Date(Y, M + i + 1, 1)];
+  const m = Math.floor(i / 2);
+  return i % 2 ? [new Date(Y, M + m, 16), new Date(Y, M + m + 1, 1)] : [new Date(Y, M + m, 1), new Date(Y, M + m, 16)];
+}
+function expectedForPeriod(s, e) {                          // expected ordered quantity for orders placed in [s, e)
+  const needStart = addDays(s, PLAN_LEAD_DAYS), needEnd = addDays(e, PLAN_LEAD_DAYS);
+  const r = demandBetween(needStart, needEnd);
+  return { low: round10(r.lo), high: round10(r.hi), mid: round10((r.lo + r.hi) / 2), needStart, needEnd };
+}
+function expectedOrderSeries(tf, len) {
+  return Array.from({ length: len }, (_, i) => { const [s, e] = periodRange(tf, i); return expectedForPeriod(s, e); });
+}
+
+function orderedSeries(tf, len) {
+  // Chart data uses every logged order, so it does not change with the test date
+  const out = new Array(len).fill(0); ordersOutside = 0;
+  const Y = chartYear(tf);
+  records.orders.forEach(o => {
+    const d = parseISO(o.orderDate); if (!d) { ordersOutside++; return; }
+    const m = (d.getFullYear() - Y) * 12 + d.getMonth() - FORECAST_START.month;
+    if (m < 0) { ordersOutside++; return; }
+    const idx = tf === '12M' ? m : m * 2 + (d.getDate() > 15 ? 1 : 0);
+    if (idx < len) out[idx] += Number(o.qty) || 0; else ordersOutside++;
+  });
+  return out;
+}
+
+/* ---- count-up ---- */
+function countUp(el, duration = 1200, delay = 350) {
+  const target = parseInt(el.dataset.count, 10) || 0;
+  if (reduceMotion || target === 0) { el.textContent = fmt(target); return; }
+  const start = performance.now() + delay;
+  function tick(now) {
+    const t = Math.min(Math.max((now - start) / duration, 0), 1);
+    el.textContent = fmt(Math.round(target * (1 - Math.pow(1 - t, 4))));
+    if (t < 1) requestAnimationFrame(tick);
+  }
+  el.textContent = '0';
+  requestAnimationFrame(tick);
+}
+function setCount(id, n) { const el = document.getElementById(id); el.dataset.count = n; countUp(el); }
+
+/* ---- stock meter + warning ---- */
+function updateMeter(stock, inTransit) {
+  const scaleMax = Math.max(2000, Math.ceil(Math.max(stock * 1.1, OPTIMAL.max * 1.25) / 500) * 500);
+  const minP = OPTIMAL.min / scaleMax * 100, maxP = OPTIMAL.max / scaleMax * 100;
+  const val = Math.min(stock / scaleMax * 100, 100);
+
+  const span = maxP - minP, g1 = minP + span * 0.3, g2 = maxP - span * 0.3;
+  document.getElementById('meterBar').style.background =
+    `linear-gradient(90deg, #E53935 0%, #FDD835 ${minP}%, #43A047 ${g1}%, #43A047 ${g2}%, #FDD835 ${maxP}%, #E53935 100%)`;
+  document.getElementById('lnMin').style.left = minP + '%';
+  document.getElementById('lnMax').style.left = maxP + '%';
+  document.getElementById('numMin').textContent = fmt(OPTIMAL.min);
+  document.getElementById('numMax').textContent = fmt(OPTIMAL.max);
+  document.getElementById('scaleMax').textContent = fmt(scaleMax);
+  document.getElementById('meterNote').textContent =
+    `Optimal range = forecast demand (low–high) over the next ${PLAN_LEAD_DAYS}-day lead time; updates each period.`;
+
+  const meter = document.getElementById('stockMeter');
+  meter.classList.remove('play'); void meter.offsetWidth; meter.classList.add('play');
+
+  const dot = document.getElementById('meterDot');
+  dot.style.transition = 'none'; dot.style.left = '0%'; void dot.offsetWidth;
+  dot.style.transition = reduceMotion ? 'none' : ''; dot.style.left = val + '%';
+
+  const pill = document.getElementById('stockPill'), warn = document.getElementById('stockWarning'), wt = document.getElementById('stockWarningText');
+  const wasHidden = warn.hidden;
+  if (stock < OPTIMAL.min) {
+    pill.className = 'pill red'; pill.textContent = 'Below optimal range';
+    wt.textContent = `Low stock: ${fmt(OPTIMAL.min - stock)} units below the optimal minimum of ${fmt(OPTIMAL.min)}. ` +
+      (inTransit > 0 ? `${fmt(inTransit)} units are in transit — check arrival dates.` : 'No orders in transit — consider placing an order.');
+    warn.hidden = false;
+  } else if (stock > OPTIMAL.max) {
+    pill.className = 'pill red'; pill.textContent = 'Above optimal range';
+    wt.textContent = `Overstock: ${fmt(stock - OPTIMAL.max)} units above the optimal maximum of ${fmt(OPTIMAL.max)}. Consider holding new orders.`;
+    warn.hidden = false;
+  } else {
+    pill.className = 'pill green'; pill.textContent = 'OK · within optimal range';
+    warn.hidden = true;
+  }
+  if (!warn.hidden) { warn.style.animation = 'none'; void warn.offsetWidth; warn.style.animation = ''; }
+}
+
+/* ---- tables ---- */
+const emptyRow = (cols, msg) => `<tr><td colspan="${cols}" class="empty-cell">${msg}</td></tr>`;
+
+function renderTables(S) {
+  // open orders
+  document.getElementById('open-orders-body').innerHTML = S.open.length ? S.open.map((o, i) => {
+    const od = parseISO(o.orderDate), eta = parseISO(o.eta);
+    const elapsed = od ? Math.max(0, Math.round((S.today - od) / DAY)) : '—';
+    let rem = '—';
+    if (eta) {
+      const d = Math.round((eta - S.today) / DAY);
+      rem = d < 0 ? `<span class="txt-red">Overdue ${-d} day${d === -1 ? '' : 's'}</span>` : d === 0 ? 'Due today' : `${d} day${d === 1 ? '' : 's'}`;
+    }
+    return `<tr class="row-in" style="--r:${i}"><td>${esc(o.id)}</td><td>${fmt(o.remaining)}</td><td>${eta ? fmtDate(eta) : '—'}</td><td>${elapsed}</td><td>${rem}</td></tr>`;
+  }).join('') : emptyRow(5, 'No open orders');
+  lastAvgLead = S.avgLead;
+  document.getElementById('lead-footer').textContent =
+    `Avg actual lead time: ${S.avgLead === null ? '—' : S.avgLead + ' days'} (plan: ${PLAN_LEAD_DAYS})`;
+
+  // inbound next 14 days
+  const inbound = S.open.filter(o => { const e = parseISO(o.eta); return e && (e - S.today) / DAY <= 14; });
+  document.getElementById('inbound-body').innerHTML = inbound.length ? inbound.map((o, i) => {
+    const eta = parseISO(o.eta), d = Math.round((eta - S.today) / DAY);
+    const st = d < 0 ? '<span class="pill red">Overdue</span>' : d <= 3 ? '<span class="pill amber">Confirm dock</span>' : '<span class="pill green">Scheduled</span>';
+    return `<tr class="row-in" style="--r:${i}"><td>${esc(o.id)}</td><td>${fmtDate(eta)}</td><td>${fmt(o.remaining)}</td><td>${esc(o.mode || '—')}</td><td>${st}</td></tr>`;
+  }).join('') : emptyRow(5, 'Nothing due in the next 14 days');
+
+  // batch expiry
+  document.getElementById('expiry-body').innerHTML = S.expiring.length ? S.expiring.map((b, i) => {
+    const t = S.today, e = b.expiry;
+    let months = (e.getFullYear() - t.getFullYear()) * 12 + e.getMonth() - t.getMonth() - (e.getDate() < t.getDate() ? 1 : 0);
+    const expired = e < t;
+    const cls = expired || months <= 6 ? 'red' : months <= 12 ? 'amber' : 'green';
+    const label = expired ? 'Expired' : months < 1 ? `${Math.max(0, Math.ceil((e - t) / DAY))} days` : `${months} month${months === 1 ? '' : 's'}`;
+    return `<tr class="row-in exp-${cls}" style="--r:${i}"><td>${esc(b.id)}</td><td>${fmt(b.qty)}</td><td>${fmtDate(e)}</td><td><span class="pill ${cls}">${label}</span></td></tr>`;
+  }).join('') : emptyRow(4, 'No batches with expiry dates');
+}
+
+/* ---- main render ---- */
+function renderDashboard() {
+  const S = computeState();
+  OPTIMAL = computeOptimal(S.today);
+  setCount('v-stock', S.stock);
+  setCount('v-transit', S.inTransit);
+  document.getElementById('transitPill').textContent = S.open.length ? `${S.open.length} shipment${S.open.length === 1 ? '' : 's'}` : 'No open orders';
+
+  const { cur, next } = activeCny(S.today);
+  const open = S.today < cur.deadline, inWindow = S.today < cur.windowEnd;
+  const days = open ? Math.ceil((cur.deadline - S.today) / DAY) : 0;
+  setCount('v-cny', days);
+  document.getElementById('cnyLabel').textContent = `Days to CNY ${cur.cny.getFullYear()} Order Deadline`;
+  const cp = document.getElementById('cnyPill');
+  if (open) { cp.className = 'pill amber pulse'; cp.textContent = 'Prepare order'; }
+  else if (inWindow) { cp.className = 'pill red'; cp.textContent = 'Deadline passed'; }
+  else { cp.className = 'pill grey'; cp.textContent = 'Order window closed'; }
+  document.getElementById('cnySub').textContent =
+    `CNY ${fmtDate(cur.cny)} · ${open ? 'order by' : 'deadline was'} ${fmtDate(cur.deadline)}` +
+    (!open && next ? ` · next window opens ${fmtDate(next.windowStart)} (in ${Math.round((next.windowStart - S.today) / DAY)} day${Math.round((next.windowStart - S.today) / DAY) === 1 ? '' : 's'})` : '');
+
+  updateMeter(S.stock, S.inTransit);
+  renderTables(S);
+  setView(currentTf);
+  renderHistory();
+
+  const n = nowDate();
+  document.getElementById('asOf').textContent = simDate ? `Data as of ${fmtDate(n)} (test date)` : `Data as of ${fmtDate(n)}, ${String(n.getHours()).padStart(2, '0')}:${String(n.getMinutes()).padStart(2, '0')}`;
+}
+
+/* ---- chart ---- */
+function curveSegments(points) {
+  let d = '';
+  for (let i = 0; i < points.length - 1; i++) {
+    const p0 = i === 0 ? points[i] : points[i - 1], p1 = points[i], p2 = points[i + 1];
+    const p3 = i + 2 < points.length ? points[i + 2] : p2;
+    d += ` C ${p1[0] + (p2[0] - p0[0]) / 6},${p1[1] + (p2[1] - p0[1]) / 6} ${p2[0] - (p3[0] - p1[0]) / 6},${p2[1] - (p3[1] - p1[1]) / 6} ${p2[0]},${p2[1]}`;
+  }
+  return d;
+}
+const getSmoothPath = pts => pts.length ? `M ${pts[0][0]},${pts[0][1]}` + curveSegments(pts) : '';
+function getBandPath(upper, lower) {
+  const rev = [...lower].reverse();
+  return getSmoothPath(upper) + ` L ${rev[0][0]},${rev[0][1]}` + curveSegments(rev) + ' Z';
+}
+
+const needLabel = d => { const e = addDays(d.needEnd, -1), f = x => `${x.getDate()} ${MONTHS[x.getMonth()]}`; return `${f(d.needStart)} – ${f(e)}`; };
+
+function setView(tf) {
+  document.getElementById('legendExp').textContent = `Expected ordered quantity (demand shifted back ${PLAN_LEAD_DAYS}-day lead time)`;
+  currentTf = tf;
+  document.querySelectorAll('#toggleGroup .toggle-btn').forEach(btn => btn.classList.toggle('active', btn.textContent === tf));
+  movePill('togglePill', document.querySelector('#toggleGroup .toggle-btn.active'), 3);
+
+  const base = forecastSets[tf], ordered = orderedSeries(tf, base.length), expected = expectedOrderSeries(tf, base.length);
+  const data = base.map((d, i) => ({ date: d.date, yr: periodRange(tf, i)[0].getFullYear(), ...expected[i], ord: ordered[i] }));
+  currentData = data;
+  const wStart = periodRange(tf, 0)[0], wEnd = addDays(periodRange(tf, base.length - 1)[1], -1);
+  document.getElementById('chartRange').textContent = `${MONTHS[wStart.getMonth()]} ${wStart.getFullYear()} – ${MONTHS[wEnd.getMonth()]} ${wEnd.getFullYear()}`;
+
+  const L = 60, R = 680, B = 260, T = 20;
+  const top = Math.max(...data.map(d => Math.max(d.high, d.ord)));
+  const maxU = Math.max(800, Math.ceil(top / 200) * 200), step = maxU > 1600 ? 400 : 200;
+  const xStep = (R - L) / (data.length - 1), yS = (B - T) / maxU;
+  const hi = [], lo = [], od = [];
+  let xl = '', hz = '';
+  data.forEach((d, i) => {
+    const x = L + i * xStep;
+    hi.push([x, B - d.high * yS]); lo.push([x, B - d.low * yS]); od.push([x, B - d.ord * yS]);
+    xl += `<text x="${x}" y="280">${d.date}</text>`;
+    const zl = i === 0 ? L - 20 : x - xStep / 2, zr = i === data.length - 1 ? R + 20 : x + xStep / 2;
+    hz += `<rect x="${zl}" y="${T}" width="${zr - zl}" height="${B - T}" fill="transparent" data-index="${i}"/>`;
+  });
+
+  const band = document.getElementById('area-band'), line = document.getElementById('solid-line');
+  band.classList.remove('animated-band'); line.classList.remove('animated-line'); void line.offsetWidth;
+  band.setAttribute('d', getBandPath(hi, lo));
+  line.setAttribute('d', getSmoothPath(od));
+  document.getElementById('dashed-high').setAttribute('d', getSmoothPath(hi));
+  document.getElementById('dashed-low').setAttribute('d', getSmoothPath(lo));
+  band.classList.add('animated-band'); line.classList.add('animated-line');
+
+  document.getElementById('line-markers').innerHTML = od.map((p, i) =>
+    `<circle class="marker" cx="${p[0]}" cy="${p[1]}" r="4" fill="#1F6FEB" stroke="#fff" stroke-width="1.5" style="animation-delay:${600 + i * 70}ms"/>`).join('');
+  document.getElementById('x-axis-labels').innerHTML = xl;
+  document.getElementById('hover-zones').innerHTML = hz;
+
+  let ax = '';
+  for (let j = 0; j <= maxU; j += step) {
+    const y = B - j * yS;
+    ax += `<line x1="${L}" y1="${y}" x2="${R}" y2="${y}" stroke="#E5E7EB" stroke-width="1"/><text x="${L - 6}" y="${y + 4}" font-size="10" fill="#6B7280" text-anchor="end">${j}</text>`;
+  }
+  document.getElementById('chart-axes').innerHTML = ax;
+
+  // Shade the order periods whose goods land in the CNY demand peak (peak demand shifted back by the lead time)
+  let cny = '';
+  const pk = cnyPeakFor(chartYear(tf));
+  const hit = pk ? data.map((d, i) => (d.needStart < pk.end && d.needEnd > pk.start) ? i : -1).filter(i => i >= 0) : [];
+  if (hit.length) {
+    const xs = Math.max(L, L + (hit[0] - 0.5) * xStep), xe = Math.min(L + (hit[hit.length - 1] + 0.5) * xStep, R + 20);
+    cny += `<rect x="${xs}" y="${T}" width="${xe - xs}" height="${B - T}" fill="#FFF8E1" opacity="0"><animate attributeName="opacity" from="0" to="0.6" dur="0.8s" begin="0.4s" fill="freeze"/></rect>`;
+    cny += `<text x="${xs + 6}" y="16" text-anchor="start" font-size="11" fill="#B8860B" font-weight="600">CNY order window</text>`;
+  }
+  document.getElementById('chart-cny').innerHTML = cny;
+
+  // "Today" marker (follows the test date)
+  const tdy = startOfDay(nowDate());
+  let tx = null;
+  for (let i = 0; i < data.length; i++) {
+    const [a, b] = periodRange(tf, i);
+    if (tdy >= a && tdy < b) { tx = Math.max(L, Math.min(R, L + (i - 0.5 + (tdy - a) / (b - a)) * xStep)); break; }
+  }
+  document.getElementById('chart-today').innerHTML = tx === null ? '' :
+    `<line x1="${tx}" y1="${T}" x2="${tx}" y2="${B}" stroke="#111827" stroke-width="1.5" stroke-dasharray="3 3"/>` +
+    `<text x="${tx}" y="6" text-anchor="middle" font-size="10" font-weight="700" fill="#111827">${simDate ? 'Test date' : 'Today'}</text>`;
+
+  document.getElementById('forecast-table-body').innerHTML = data.map((d, i) => {
+    const inRange = d.ord >= d.low && d.ord <= d.high;
+    return `<tr class="row-in" style="--r:${i}"><td>${d.date}</td><td>${fmt(d.low)}–${fmt(d.high)}</td><td>${fmt(d.ord)}</td><td class="${inRange ? 'yes' : 'no'}">${inRange ? 'Yes' : 'No'}</td><td>${needLabel(d)}</td></tr>`;
+  }).join('');
+  document.getElementById('table-footer-text').innerText =
+    `Showing next ${tf === '3M' ? 3 : tf === '6M' ? 6 : 12} order months. Expected ordered quantity = forecast demand shifted back by the ${PLAN_LEAD_DAYS}-day lead time (goods ordered in a period arrive to cover the demand shown in “Serves Demand Of”). Ordered quantity = orders logged, grouped by order date.` +
+    (ordersOutside ? ` ${ordersOutside} order${ordersOutside === 1 ? '' : 's'} dated outside this window not shown.` : '') +
+    (tx === null ? ' The current date is outside this chart window.' : '');
+  setupTooltips(xStep, L);
+}
+
+function setupTooltips(xStep, L) {
+  const tip = document.getElementById('tooltip'), tr = document.getElementById('trackerLine');
+  const wrap = document.getElementById('chartWrap'), svg = document.getElementById('forecastChart');
+  document.querySelectorAll('#hover-zones rect').forEach(z => {
+    z.addEventListener('mouseenter', e => {
+      const idx = parseInt(e.target.getAttribute('data-index')), d = currentData[idx];
+      document.getElementById('tt-title').innerText = `${d.date} ${d.yr}`;
+      document.getElementById('tt-need').innerText = needLabel(d);
+      document.getElementById('tt-ord').innerText = fmt(d.ord);
+      document.getElementById('tt-low').innerText = fmt(d.low);
+      document.getElementById('tt-high').innerText = fmt(d.high);
+      const sr = svg.getBoundingClientRect(), wr = wrap.getBoundingClientRect();
+      const lp = sr.left - wr.left + ((L + idx * xStep) / 720) * sr.width;
+      tr.style.left = `${lp}px`; tr.classList.add('visible');
+      const tw = tip.offsetWidth || 200; let tl = lp + 15; if (tl + tw > wr.width) tl = lp - tw - 10;
+      tip.style.left = `${tl}px`; tip.style.top = '20px'; tip.classList.add('visible');
+    });
+    z.addEventListener('mouseleave', () => { tip.classList.remove('visible'); tr.classList.remove('visible'); });
+  });
+}
+
+/* =====================================================
+   DATA ENTRY
+   ===================================================== */
+const SCHEMAS = {
+  orders: {
+    label: 'Order', prefix: 'ORD', title: 'Log an order',
+    blurb: 'Record a purchase order. Its quantity adds to the dashboard chart (by order date) and to in-transit units until deliveries are logged.',
+    fields: [
+      { key: 'id',        label: 'Order ID',         type: 'text',   ph: 'Auto-generated if blank' },
+      { key: 'orderDate', label: 'Order date',       type: 'date',   req: true, today: true },
+      { key: 'qty',       label: 'Quantity (units)', type: 'number', req: true, rec: true },
+      { key: 'eta',       label: 'Expected arrival', type: 'date',   req: true },
+      { key: 'mode',      label: 'Transport mode',   type: 'select', options: ['Sea', 'Air', 'Road', 'Rail'], req: true },
+      { key: 'notes',     label: 'Notes',            type: 'textarea', wide: true }
+    ],
+    cols: ['id', 'orderDate', 'qty', 'eta', 'mode']
+  },
+  deliveries: {
+    label: 'Delivery', prefix: 'DEL', title: 'Log a delivery',
+    blurb: 'Record goods received. Use the matching Order ID so in-transit units update. Damaged goods are not counted as stock.',
+    fields: [
+      { key: 'id',           label: 'Delivery ID',       type: 'text',   ph: 'Auto-generated if blank' },
+      { key: 'orderId',      label: 'Order ID',          type: 'text',   req: true, ph: 'e.g. ORD-20261101-01' },
+      { key: 'receivedDate', label: 'Received date',     type: 'date',   req: true, today: true },
+      { key: 'qty',          label: 'Quantity received', type: 'number', req: true },
+      { key: 'batchId',      label: 'Batch ID',          type: 'text',   req: true },
+      { key: 'expiry',       label: 'Expiry date',       type: 'date' },
+      { key: 'condition',    label: 'Condition',         type: 'select', options: ['Good', 'Partial', 'Damaged'], req: true },
+      { key: 'notes',        label: 'Notes',             type: 'textarea', wide: true }
+    ],
+    cols: ['id', 'orderId', 'receivedDate', 'qty', 'batchId', 'expiry', 'condition']
+  },
+  dispatches: {
+    label: 'Dispatch', prefix: 'DSP', title: 'Log a dispatch',
+    blurb: 'Record stock sent out. Include the Batch ID to reduce that batch on the expiry list.',
+    fields: [
+      { key: 'id',           label: 'Dispatch ID',      type: 'text',   ph: 'Auto-generated if blank' },
+      { key: 'dispatchDate', label: 'Dispatch date',    type: 'date',   req: true, today: true },
+      { key: 'destination',  label: 'Customer / Destination', type: 'text', req: true },
+      { key: 'qty',          label: 'Quantity (units)', type: 'number', req: true },
+      { key: 'batchId',      label: 'Batch ID',         type: 'text' },
+      { key: 'reference',    label: 'Reference / Invoice no.', type: 'text' },
+      { key: 'notes',        label: 'Notes',            type: 'textarea', wide: true }
+    ],
+    cols: ['id', 'dispatchDate', 'destination', 'qty', 'batchId', 'reference']
+  }
+};
+
+let activeSec = 'orders', lastAdded = null, pendingSec = 'orders';
+
+function toast(msg, isError) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.toggle('error', !!isError); t.classList.add('show');
+  clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.remove('show'), 3200);
+}
+function genId(sec) {
+  const p = SCHEMAS[sec].prefix, d = todayISO().replace(/-/g, '');
+  let n = records[sec].filter(r => r.id.startsWith(`${p}-${d}`)).length + 1, id;
+  do { id = `${p}-${d}-${String(n++).padStart(2, '0')}`; } while (records[sec].some(r => r.id === id));
+  return id;
+}
+function fieldHTML(sec, f) {
+  const id = `${sec}-${f.key}`, req = f.req ? '<span class="req">*</span>' : '';
+  let input;
+  if (f.type === 'select') input = `<select id="${id}" name="${f.key}"><option value="">Select…</option>${f.options.map(o => `<option>${o}</option>`).join('')}</select>`;
+  else if (f.type === 'textarea') input = `<textarea id="${id}" name="${f.key}" rows="2"></textarea>`;
+  else input = `<input id="${id}" name="${f.key}" type="${f.type}" ${f.type === 'number' ? 'min="0" step="1"' : ''} ${f.ph ? `placeholder="${f.ph}"` : ''} ${f.today ? `value="${todayISO()}"` : ''}>`;
+  if (f.rec) input = `<div class="qty-row">${input}<div class="rec" id="rec-box"></div></div>`;
+  return `<div class="field ${f.wide || f.rec ? 'wide' : ''}" data-key="${f.key}"><label for="${id}">${f.label}${req}</label>${input}</div>`;
+}
+
+function renderSections() {
+  document.getElementById('sections').innerHTML = Object.keys(SCHEMAS).map(sec => {
+    const s = SCHEMAS[sec];
+    return `
+    <div class="section-view ${sec === activeSec ? 'active' : ''}" id="sec-${sec}">
+      <div class="entry-grid">
+        <div class="card static">
+          <div class="card-header"><div class="card-title">${s.title}</div></div>
+          <p style="color:var(--grey);font-size:12px;margin-bottom:16px">${s.blurb}</p>
+          <form id="form-${sec}" novalidate>
+            <div class="form-grid">${s.fields.map(f => fieldHTML(sec, f)).join('')}</div>
+            <div class="form-actions">
+              <button type="submit" class="btn primary">Add ${s.label.toLowerCase()}</button>
+              <button type="button" class="btn ghost" data-reset="${sec}">Clear</button>
+            </div>
+          </form>
+        </div>
+        <div class="card static">
+          <div class="card-header"><div class="card-title">Upload from Excel</div></div>
+          <div class="dropzone" data-drop="${sec}">
+            <div class="dz-icon">📄</div>
+            <div class="dz-title">Drop a spreadsheet here, or click to browse</div>
+            <div class="dz-sub">.xlsx, .xls or .csv · first sheet is read · first row must be headers</div>
+          </div>
+          <div class="upload-meta"><button class="btn ghost small" data-template="${sec}">⬇ Download template</button></div>
+          <div class="hint">
+            Expected columns: ${s.fields.filter(f => f.key !== 'notes').map(f => `<code>${f.label}</code>`).join(' ')} <code>Notes</code><br>
+            Rows missing required fields are skipped. Blank IDs are generated automatically.
+          </div>
+        </div>
+      </div>
+      <div class="card static">
+        <div class="log-head">
+          <div class="card-title">Logged ${s.label.toLowerCase()}s</div>
+          <div style="display:flex;gap:8px">
+            <button class="btn ghost small" data-export="${sec}">⬇ Export Excel</button>
+            <button class="btn ghost small" data-clear="${sec}">Clear all</button>
+          </div>
+        </div>
+        <div class="table-scroll" id="table-${sec}"></div>
+      </div>
+    </div>`;
+  }).join('');
+  Object.keys(SCHEMAS).forEach(renderTable);
+  updateCounts();
+  bindEntryEvents();
+}
+
+function renderTable(sec) {
+  const s = SCHEMAS[sec], rows = records[sec], el = document.getElementById('table-' + sec);
+  if (!rows.length) { el.innerHTML = `<div class="empty">No ${s.label.toLowerCase()}s logged yet. Add one with the form or upload a spreadsheet.</div>`; return; }
+  const labels = Object.fromEntries(s.fields.map(f => [f.key, f.label]));
+  el.innerHTML = `<table><thead><tr>${s.cols.map(c => `<th>${labels[c]}</th>`).join('')}<th></th></tr></thead><tbody>${
+    [...rows].reverse().map(r => `<tr class="${r.id === lastAdded ? 'new-row' : ''}">${
+      s.cols.map(c => `<td>${esc(c === 'qty' ? fmt(r[c]) : r[c])}</td>`).join('')
+    }<td><button class="del" title="Delete" data-del="${sec}|${esc(r.id)}">×</button></td></tr>`).join('')
+  }</tbody></table>`;
+}
+function updateCounts() { Object.keys(SCHEMAS).forEach(sec => document.getElementById('count-' + sec).textContent = records[sec].length); updateRec(); }
+function addRecord(sec, rec) { if (!rec.id) rec.id = genId(sec); records[sec].push(rec); lastAdded = rec.id; }
+
+/* ---------- Recommended order quantity (from the chart's expected ordered quantity) ---------- */
+function recommendFor(d) {
+  const half = d.getDate() > 15;                            // same half-month periods as the chart
+  const start = new Date(d.getFullYear(), d.getMonth(), half ? 16 : 1);
+  const end = half ? new Date(d.getFullYear(), d.getMonth() + 1, 1) : new Date(d.getFullYear(), d.getMonth(), 16);
+  const ordered = records.orders.reduce((n, o) => { const od = parseISO(o.orderDate); return od && od >= start && od < end ? n + (Number(o.qty) || 0) : n; }, 0);
+  return { start, end, ordered, ...expectedForPeriod(start, end) };
+}
+let recValue = null;
+function updateRec() {
+  const box = document.getElementById('rec-box'), dateEl = document.getElementById('orders-orderDate'), qtyEl = document.getElementById('orders-qty');
+  if (!box || !dateEl) return;
+  const d = parseISO(dateEl.value);
+  if (!d) { recValue = null; box.innerHTML = '<span class="rec-lbl">Recommended quantity</span><br>Pick an order date to see the recommendation.'; return; }
+  const r = recommendFor(d), last = addDays(r.end, -1), f = x => `${x.getDate()} ${MONTHS[x.getMonth()]}`;
+  const rec = Math.max(0, r.mid - r.ordered);              // what is still to order this period
+  recValue = rec;
+  const q = Number(qtyEl && qtyEl.value), total = r.ordered + q;   // period total if this order is added
+  const flag = !q ? '' : total < r.low ? `<span class="rec-flag warn">Period total ${fmt(total)}: below expected range</span>` : total > r.high ? `<span class="rec-flag warn">Period total ${fmt(total)}: above expected range</span>` : `<span class="rec-flag ok">✓ Period total ${fmt(total)} within expected range</span>`;
+  const note = r.ordered
+    ? `Target ${fmt(r.mid)} − ${fmt(r.ordered)} already ordered in this period${rec === 0 ? ' — this period is already covered.' : '.'}`
+    : `Target ${fmt(r.mid)} (no orders logged in this period yet).`;
+  box.innerHTML =
+    `<div class="rec-main"><span class="rec-lbl">Recommended</span><b>${fmt(rec)}</b><span>units</span>${flag}${rec > 0 ? '<button type="button" class="btn ghost small" id="rec-use">Use</button>' : ''}</div>` +
+    `${note}<br>Expected range ${fmt(r.low)}–${fmt(r.high)} for orders placed ${f(r.start)}–${f(last)} ${last.getFullYear()}, arriving for demand ${f(r.needStart)} – ${f(addDays(r.needEnd, -1))} (${PLAN_LEAD_DAYS}-day lead time).`;
+}
+
+function bindEntryEvents() {
+  const od = document.getElementById('orders-orderDate'), oq = document.getElementById('orders-qty'), rb = document.getElementById('rec-box');
+  od.addEventListener('input', updateRec); od.addEventListener('change', updateRec); oq.addEventListener('input', updateRec);
+  rb.addEventListener('click', e => {
+    if (!e.target.closest('#rec-use') || recValue === null) return;
+    oq.value = recValue; oq.closest('.field').classList.remove('invalid'); updateRec(); oq.focus();
+  });
+  Object.keys(SCHEMAS).forEach(sec => {
+    const form = document.getElementById('form-' + sec);
+    form.addEventListener('submit', e => {
+      e.preventDefault();
+      const s = SCHEMAS[sec]; let ok = true; const rec = {};
+      s.fields.forEach(f => {
+        const wrap = form.querySelector(`[data-key="${f.key}"]`), v = form.elements[f.key].value.trim();
+        wrap.classList.remove('invalid'); void wrap.offsetWidth;
+        if (f.req && !v) { wrap.classList.add('invalid'); ok = false; }
+        rec[f.key] = v;
+      });
+      if (rec.id && records[sec].some(r => r.id === rec.id)) { toast(`${s.label} ID ${rec.id} already exists.`, true); return; }
+      if (!ok) { toast('Please fill in the highlighted fields.', true); return; }
+      addRecord(sec, rec); persist(); renderTable(sec); updateCounts();
+      resetForm(sec); toast(`${s.label} ${rec.id} logged.`);
+    });
+    form.querySelectorAll('input,select').forEach(i => i.addEventListener('input', () => i.closest('.field').classList.remove('invalid')));
+  });
+  document.querySelectorAll('[data-reset]').forEach(b => b.addEventListener('click', () => resetForm(b.dataset.reset)));
+  document.querySelectorAll('[data-template]').forEach(b => b.addEventListener('click', () => downloadTemplate(b.dataset.template)));
+  document.querySelectorAll('[data-export]').forEach(b => b.addEventListener('click', () => exportRecords(b.dataset.export)));
+  document.querySelectorAll('[data-clear]').forEach(b => b.addEventListener('click', () => {
+    const sec = b.dataset.clear;
+    if (records[sec].length && confirm(`Delete all ${records[sec].length} logged ${SCHEMAS[sec].label.toLowerCase()}s?`)) {
+      records[sec] = []; persist(); renderTable(sec); updateCounts();
+    }
+  }));
+  document.getElementById('sections').addEventListener('click', e => {
+    const d = e.target.closest('[data-del]'); if (!d) return;
+    const [sec, id] = d.dataset.del.split('|');
+    records[sec] = records[sec].filter(r => r.id !== id); persist(); renderTable(sec); updateCounts();
+  });
+  document.querySelectorAll('.dropzone').forEach(dz => {
+    const sec = dz.dataset.drop;
+    dz.addEventListener('click', () => { pendingSec = sec; document.getElementById('fileInput').click(); });
+    ['dragenter', 'dragover'].forEach(ev => dz.addEventListener(ev, e => { e.preventDefault(); dz.classList.add('drag'); }));
+    ['dragleave', 'drop'].forEach(ev => dz.addEventListener(ev, e => { e.preventDefault(); dz.classList.remove('drag'); }));
+    dz.addEventListener('drop', e => { if (e.dataTransfer.files[0]) importFile(sec, e.dataTransfer.files[0]); });
+  });
+}
+function resetForm(sec) {
+  const form = document.getElementById('form-' + sec);
+  form.reset();
+  form.querySelectorAll('.invalid').forEach(x => x.classList.remove('invalid'));
+  SCHEMAS[sec].fields.filter(f => f.today).forEach(f => form.elements[f.key].value = todayISO());
+  updateRec();
+}
+
+/* ---------- Excel import / export ---------- */
+document.getElementById('fileInput').addEventListener('change', e => {
+  const f = e.target.files[0]; if (f) importFile(pendingSec, f); e.target.value = '';
+});
+function cellToString(v) {
+  if (v instanceof Date) return new Date(v.getTime() + 12 * 3600 * 1000).toISOString().slice(0, 10);
+  return v === null || v === undefined ? '' : String(v).trim();
+}
+function importFile(sec, file) {
+  if (typeof XLSX === 'undefined') { toast('Excel library could not load (are you offline?).', true); return; }
+  const reader = new FileReader();
+  reader.onload = ev => {
+    try {
+      const wb = XLSX.read(new Uint8Array(ev.target.result), { type: 'array', cellDates: true });
+      const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { defval: '', raw: true });
+      if (!rows.length) { toast('The file has no data rows.', true); return; }
+      const s = SCHEMAS[sec], map = {};
+      s.fields.forEach(f => { map[norm(f.label)] = f; map[norm(f.key)] = f; });
+      let added = 0, skipped = 0, dupes = 0;
+      rows.forEach(row => {
+        const rec = {};
+        Object.keys(row).forEach(h => { const f = map[norm(h)]; if (f) rec[f.key] = cellToString(row[h]); });
+        s.fields.forEach(f => { if (rec[f.key] === undefined) rec[f.key] = ''; });
+        if (s.fields.some(f => f.req && !rec[f.key])) { skipped++; return; }
+        if (rec.id && records[sec].some(r => r.id === rec.id)) { dupes++; return; }
+        addRecord(sec, rec); added++;
+      });
+      persist(); renderTable(sec); updateCounts();
+      const extra = [skipped && `${skipped} skipped (missing required fields)`, dupes && `${dupes} duplicate ID${dupes > 1 ? 's' : ''} ignored`].filter(Boolean).join(', ');
+      toast(`${added} ${s.label.toLowerCase()}${added === 1 ? '' : 's'} imported${extra ? ' · ' + extra : ''}.`, added === 0);
+    } catch (err) { toast('Could not read that file. Use .xlsx, .xls or .csv.', true); }
+  };
+  reader.readAsArrayBuffer(file);
+}
+function downloadTemplate(sec) {
+  if (typeof XLSX === 'undefined') { toast('Excel library could not load (are you offline?).', true); return; }
+  const s = SCHEMAS[sec], ws = XLSX.utils.aoa_to_sheet([s.fields.map(f => f.label)]);
+  ws['!cols'] = s.fields.map(f => ({ wch: Math.max(14, f.label.length + 4) }));
+  const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, s.label + 's');
+  XLSX.writeFile(wb, `${sec}_template.xlsx`);
+}
+function exportRecords(sec) {
+  if (typeof XLSX === 'undefined') { toast('Excel library could not load (are you offline?).', true); return; }
+  if (!records[sec].length) { toast('Nothing to export yet.', true); return; }
+  const s = SCHEMAS[sec];
+  const aoa = [s.fields.map(f => f.label), ...records[sec].map(r => s.fields.map(f => r[f.key] ?? ''))];
+  const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(aoa), s.label + 's');
+  XLSX.writeFile(wb, `${sec}_${realTodayISO()}.xlsx`);
+}
+document.getElementById('seg').addEventListener('click', e => {
+  const b = e.target.closest('.seg-btn'); if (!b) return;
+  activeSec = b.dataset.sec;
+  document.querySelectorAll('.seg-btn').forEach(x => x.classList.toggle('active', x === b));
+  document.querySelectorAll('.section-view').forEach(v => v.classList.toggle('active', v.id === 'sec-' + activeSec));
+  movePill('segPill', b, 4);
+});
+
+/* ---------- Test-date widget ---------- */
+function updateSimUI() {
+  const on = !!simDate, d = nowDate(), pill = document.getElementById('simPill'), tog = document.getElementById('simToggle');
+  document.getElementById('simInput').value = isoOf(d);
+  pill.classList.toggle('on', on); pill.textContent = on ? `🧪 Test date: ${fmtDate(d)}` : '';
+  tog.classList.toggle('on', on); tog.textContent = on ? `🧪 ${fmtDate(d)}` : '🧪 Test date';
+  const h = hiddenCount();
+  document.getElementById('simStatus').textContent = on
+    ? `The dashboard is showing ${fmtDate(d)}. Records dated after it are hidden${h ? ` (${h} hidden)` : ''}; Data Entry is unaffected.`
+    : 'Using the real date. Pick a date to see how the dashboard reacts.';
+}
+function setSimDate(d) {
+  const prev = todayISO();
+  simDate = d ? startOfDay(d) : null;
+  const now = todayISO();
+  Object.keys(SCHEMAS).forEach(sec => {                 // keep "today" defaults in the entry forms in step
+    const form = document.getElementById('form-' + sec); if (!form) return;
+    SCHEMAS[sec].fields.filter(f => f.today).forEach(f => { const el = form.elements[f.key]; if (el && (!el.value || el.value === prev)) el.value = now; });
+  });
+  updateSimUI(); updateRec(); renderDashboard(); updateLeadUI();
+}
+/* Lead time control: changes the planning lead time used by the optimal range, expected order quantities,
+   CNY order window/deadline and the historic comparison. */
+function updateLeadUI() {
+  document.getElementById('leadInput').value = PLAN_LEAD_DAYS;
+  const dl = cnyInfo(CNY_DATES[1]).deadline;
+  const j1 = document.getElementById('jumpDeadline'), j2 = document.getElementById('jumpAfter');
+  j1.dataset.jump = isoOf(dl); j2.dataset.jump = isoOf(addDays(dl, 1));
+  document.getElementById('leadStatus').textContent =
+    `Planning lead time: ${PLAN_LEAD_DAYS} days${PLAN_LEAD_DAYS === DEFAULT_LEAD_DAYS ? ' (default)' : ` (default ${DEFAULT_LEAD_DAYS})`}. ` +
+    `Avg actual from logged orders: ${lastAvgLead === null || lastAvgLead === undefined ? '—' : lastAvgLead + ' days'}. ` +
+    `CNY 2027 order deadline: ${fmtDate(dl)}.`;
+  document.getElementById('leadReset').disabled = PLAN_LEAD_DAYS === DEFAULT_LEAD_DAYS;
+}
+function setLead(n) {
+  n = Math.round(Number(n));
+  if (!isFinite(n)) { updateLeadUI(); return; }
+  PLAN_LEAD_DAYS = Math.min(365, Math.max(1, n));
+  updateRec(); renderDashboard(); updateLeadUI();
+}
+document.getElementById('leadInput').addEventListener('change', e => setLead(e.target.value));
+document.getElementById('leadReset').addEventListener('click', () => setLead(DEFAULT_LEAD_DAYS));
+document.getElementById('simPanel').addEventListener('click', e => {
+  const b = e.target.closest('[data-lead]'); if (b) setLead(PLAN_LEAD_DAYS + Number(b.dataset.lead));
+});
+
+const simPanel = document.getElementById('simPanel');
+document.getElementById('simToggle').addEventListener('click', () => simPanel.classList.toggle('open'));
+document.getElementById('simPill').addEventListener('click', () => simPanel.classList.add('open'));
+document.getElementById('simClose').addEventListener('click', () => simPanel.classList.remove('open'));
+document.getElementById('simInput').addEventListener('change', e => { const d = parseISO(e.target.value); if (d) setSimDate(d); });
+document.getElementById('simReset').addEventListener('click', () => setSimDate(null));
+simPanel.addEventListener('click', e => {
+  const st = e.target.closest('[data-step]'), jp = e.target.closest('[data-jump]');
+  if (st) { const b = startOfDay(nowDate()); setSimDate(new Date(b.getFullYear(), b.getMonth(), b.getDate() + Number(st.dataset.step))); }
+  if (jp) setSimDate(parseISO(jp.dataset.jump));
+});
+
+/* ---------- Historic: expected vs actual ordered quantity ---------- */
+let histTf = '6M';
+function histPeriods(tf) {                                  // completed order periods, oldest first
+  const today = startOfDay(nowDate()), half = tf !== '12M', out = [];
+  for (let m = 0; m < 240; m++) {
+    const b = new Date(FORECAST_START.year, FORECAST_START.month + m, 1);
+    const mid = new Date(b.getFullYear(), b.getMonth(), 16), nx = new Date(b.getFullYear(), b.getMonth() + 1, 1);
+    for (const p of (half ? [[b, mid], [mid, nx]] : [[b, nx]])) { if (p[1] > today) return out; out.push(p); }
+  }
+  return out;
+}
+function renderHistory() {
+  document.querySelectorAll('#histToggle .toggle-btn').forEach(b => b.classList.toggle('active', b.dataset.h === histTf));
+  movePill('histPill', document.querySelector('#histToggle .toggle-btn.active'), 3);
+  const half = histTf !== '12M', keep = histTf === '3M' ? 6 : 12;
+  const rows = histPeriods(histTf).slice(-keep).map(([s, e]) => {
+    const x = expectedForPeriod(s, e), yy = "'" + String(s.getFullYear()).slice(2);
+    const act = records.orders.reduce((n, o) => { const d = parseISO(o.orderDate); return d && d >= s && d < e ? n + (Number(o.qty) || 0) : n; }, 0);
+    const lbl = half ? `${MONTHS[s.getMonth()]} ${s.getDate() === 1 ? 1 : 2} ${yy}` : `${MONTHS[s.getMonth()]} ${yy}`;
+    return { s, e, lbl, act, ...x, st: act < x.low ? 'below' : act > x.high ? 'above' : 'within' };
+  });
+  document.getElementById('hist-empty').hidden = rows.length > 0;
+  document.getElementById('hist-content').hidden = !rows.length;
+  if (!rows.length) return;
+
+  const L = 60, R = 680, B = 260, T = 20, n = rows.length;
+  const top = Math.max(...rows.map(d => Math.max(d.high, d.act)));
+  const maxU = Math.max(800, Math.ceil(top / 200) * 200), step = maxU > 1600 ? 400 : 200, yS = (B - T) / maxU;
+  const X = i => n > 1 ? L + i * (R - L) / (n - 1) : (L + R) / 2;
+  const hi = rows.map((d, i) => [X(i), B - d.high * yS]), lo = rows.map((d, i) => [X(i), B - d.low * yS]), ac = rows.map((d, i) => [X(i), B - d.act * yS]);
+  const col = { within: '#1F6FEB', below: '#C62828', above: '#C62828' };
+  let g = '';
+  for (let j = 0; j <= maxU; j += step) {
+    const y = B - j * yS;
+    g += `<line x1="${L}" y1="${y}" x2="${R}" y2="${y}" stroke="#E5E7EB"/><text x="${L - 6}" y="${y + 4}" font-size="10" fill="#6B7280" text-anchor="end">${j}</text>`;
+  }
+  if (n > 1) {
+    g += `<path d="${getBandPath(hi, lo)}" fill="#BBDEFB" opacity="0.55"/>` +
+         `<path d="${getSmoothPath(hi)}" fill="none" stroke="#64B5F6" stroke-width="1.5" stroke-dasharray="4 4"/>` +
+         `<path d="${getSmoothPath(lo)}" fill="none" stroke="#90CAF9" stroke-width="1.5" stroke-dasharray="4 4"/>` +
+         `<path d="${getSmoothPath(ac)}" fill="none" stroke="#1F6FEB" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>`;
+  } else {
+    g += `<line x1="${hi[0][0]}" y1="${hi[0][1]}" x2="${lo[0][0]}" y2="${lo[0][1]}" stroke="#BBDEFB" stroke-width="14" stroke-linecap="round" opacity="0.8"/>`;
+  }
+  rows.forEach((d, i) => {
+    const tip = `${d.lbl}: expected ${fmt(d.low)}–${fmt(d.high)}, actual ${fmt(d.act)} (${d.st === 'within' ? 'within range' : d.st + ' range'})`;
+    g += `<circle cx="${ac[i][0]}" cy="${ac[i][1]}" r="5" fill="${col[d.st]}" stroke="#fff" stroke-width="1.5"><title>${tip}</title></circle>` +
+         `<text x="${X(i)}" y="280" font-size="${n > 8 ? 9 : 10}" fill="#6B7280" text-anchor="middle">${d.lbl}</text>`;
+  });
+  document.getElementById('histChart').innerHTML = g;
+
+  const c = k => rows.filter(r => r.st === k).length;
+  const sum = (k) => rows.reduce((t, r) => t + r[k], 0);
+  document.getElementById('hist-summary').innerHTML =
+    `<b>${c('within')} of ${n}</b> periods within the expected range · ${c('below')} below · ${c('above')} above<br>` +
+    `Total ordered <b>${fmt(sum('act'))}</b> vs expected ${fmt(sum('low'))}–${fmt(sum('high'))} over ${fmtDate(rows[0].s)} – ${fmtDate(addDays(rows[n - 1].e, -1))}`;
+
+  document.getElementById('hist-body').innerHTML = [...rows].reverse().map(d => {
+    const cls = d.st === 'within' ? 'yes' : 'no', txt = d.st === 'within' ? 'Within range' : d.st === 'below' ? 'Below range' : 'Above range';
+    return `<tr><td>${d.lbl}</td><td>${fmt(d.low)}–${fmt(d.high)}</td><td>${fmt(d.act)}</td><td class="${cls}">${txt}</td></tr>`;
+  }).join('');
+}
+document.getElementById('histToggle').addEventListener('click', e => {
+  const b = e.target.closest('[data-h]'); if (!b) return;
+  histTf = b.dataset.h; renderHistory();
+});
+
+/* ---------- init ---------- */
+renderSections();
+updateSimUI();
+renderDashboard();
+updateLeadUI();
+if ((location.hash || '') === '#entry') showPage('entry'); else movePill('navPill', document.querySelector('.nav-btn.active'), 3);
+window.addEventListener('resize', () => {
+  movePill('navPill', document.querySelector('.nav-btn.active'), 3);
+  movePill('togglePill', document.querySelector('#toggleGroup .toggle-btn.active'), 3);
+  movePill('histPill', document.querySelector('#histToggle .toggle-btn.active'), 3);
+  movePill('segPill', document.querySelector('.seg-btn.active'), 4);
+});
+</script>
+</body>
+</html>
