@@ -1,0 +1,10 @@
+Order ID,Order date,Quantity (units),Expected arrival,Transport mode,Notes
+ORD-2026-01-02,2026-01-02,1400,2026-03-08,Sea,Rebuild after CNY peak
+ORD-2026-02-15,2026-02-15,1100,2026-04-21,Sea,Spring restock
+ORD-2026-04-01,2026-04-01,900,2026-06-05,Sea,Low-season cover
+ORD-2026-05-15,2026-05-15,850,2026-07-19,Sea,Summer steady
+ORD-2026-07-01,2026-07-01,900,2026-09-04,Sea,Pre-autumn build
+ORD-2026-08-15,2026-08-15,1100,2026-10-19,Sea,Autumn ramp
+ORD-2026-09-20,2026-09-20,1500,2026-11-24,Sea,Pre-CNY peak load
+ORD-2026-11-01,2026-11-01,1800,2027-01-05,Sea,CNY peak stock
+ORD-2027-01-10,2027-01-10,1300,2027-03-16,Sea,Post-peak rebuild
