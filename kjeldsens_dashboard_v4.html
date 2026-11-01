@@ -1,0 +1,980 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kjeldsens Inbound Logistics</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  :root {
+    --bg: #F7F8FA; --card: #FFFFFF; --accent: #1F6FEB;
+    --green: #2E7D32; --green-bg: #E8F5E9;
+    --amber: #F9A825; --amber-text: #B7791F; --amber-bg: #FFF8E1;
+    --red: #C62828; --red-bg: #FFEBEE;
+    --grey: #6B7280; --border: #E5E7EB; --text: #111827;
+    --ease: cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: var(--bg); color: var(--text); padding: 16px; font-size: 13px;
+  }
+  .dashboard { max-width: 1440px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; }
+
+  /* ---------- Top nav ---------- */
+  .topbar {
+    max-width: 1440px; margin: 0 auto 16px;
+    display: flex; justify-content: space-between; align-items: center;
+    background: var(--card); border-radius: 10px; padding: 10px 20px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  }
+  .brand { font-size: 15px; font-weight: 700; letter-spacing: -0.01em; }
+  .brand small { font-weight: 500; color: var(--grey); margin-left: 8px; font-size: 12px; }
+  .nav { position: relative; display: flex; background: #F3F4F6; border-radius: 8px; padding: 3px; }
+  .nav-pill { position: absolute; top: 3px; bottom: 3px; left: 3px; background: var(--card); border-radius: 6px; box-shadow: 0 1px 2px rgba(0,0,0,0.1); transition: transform 0.35s var(--ease), width 0.35s var(--ease); }
+  .nav-btn { position: relative; z-index: 1; background: transparent; border: none; padding: 7px 18px; font-size: 12px; font-weight: 600; color: var(--grey); border-radius: 6px; cursor: pointer; transition: color 0.2s; }
+  .nav-btn.active { color: var(--text); }
+  .page { display: none; }
+  .page.active { display: block; animation: pageIn 0.45s var(--ease); }
+  @keyframes pageIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+
+  /* ---------- Shared ---------- */
+  @keyframes riseIn { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
+  .reveal { opacity: 0; animation: riseIn 0.7s var(--ease) forwards; animation-delay: calc(var(--i, 0) * 90ms); }
+  .card, .metric { transition: transform 0.25s var(--ease), box-shadow 0.25s var(--ease); }
+  .card:hover, .metric:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(17,24,39,0.08), 0 2px 4px rgba(17,24,39,0.04); }
+  .card.static:hover { transform: none; box-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04); }
+  .card { background: var(--card); border-radius: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04); padding: 16px 20px; }
+  .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+  .card-title { font-size: 13px; font-weight: 600; color: var(--grey); text-transform: uppercase; letter-spacing: 0.04em; }
+  .legend { display: flex; gap: 16px; font-size: 11px; font-weight: 400; text-transform: none; letter-spacing: 0; color: var(--grey); }
+  .legend span { display: flex; align-items: center; gap: 6px; }
+  .swatch { width: 14px; height: 10px; border-radius: 2px; display: inline-block; }
+
+  .toggle-group { position: relative; display: flex; background: #F3F4F6; border-radius: 8px; padding: 3px; }
+  .toggle-pill { position: absolute; top: 3px; bottom: 3px; left: 3px; background: var(--card); border-radius: 6px; box-shadow: 0 1px 2px rgba(0,0,0,0.1); transition: transform 0.35s var(--ease), width 0.35s var(--ease); }
+  .toggle-btn { position: relative; z-index: 1; background: transparent; border: none; padding: 4px 12px; font-size: 11px; font-weight: 600; color: var(--grey); border-radius: 6px; cursor: pointer; transition: color 0.2s; }
+  .toggle-btn.active { color: var(--text); }
+
+  /* ---------- Dashboard ---------- */
+  .banner { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+  .metric { background: var(--card); border-radius: 10px; padding: 16px 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); border-left: 4px solid var(--border); display: flex; flex-direction: column; justify-content: flex-start; }
+  .metric.primary { border-left: 4px solid var(--amber); }
+  .metric-label { font-size: 12px; color: var(--grey); font-weight: 500; }
+  .metric-value { font-size: 28px; font-weight: 700; margin: 8px 0 12px; font-variant-numeric: tabular-nums; }
+  .metric.primary .metric-value { font-size: 32px; color: var(--amber); }
+  .unit { font-size: 14px; font-weight: 500; color: var(--grey); }
+  .pill { display: inline-block; font-size: 11px; font-weight: 600; padding: 4px 10px; border-radius: 12px; align-self: flex-start; white-space: nowrap; transition: background 0.3s, color 0.3s; }
+  .pill.green { background: var(--green-bg); color: var(--green); }
+  .pill.amber { background: var(--amber-bg); color: var(--amber-text); }
+  .pill.red { background: var(--red-bg); color: var(--red); }
+  .pill.grey { background: #F3F4F6; color: var(--grey); }
+  @keyframes pulseAmber { 0%, 100% { box-shadow: 0 0 0 0 rgba(249,168,37,0.45); } 50% { box-shadow: 0 0 0 7px rgba(249,168,37,0); } }
+  .pill.pulse { animation: pulseAmber 2.2s ease-out infinite; }
+
+  /* Stock meter: red | green | red */
+  .stock-meter { position: relative; margin: 4px 0 6px; padding-top: 22px; }
+  .meter-track { position: relative; height: 12px; border-radius: 6px; background: #EEF0F3; }
+  .zone { position: absolute; top: 0; bottom: 0; }
+  .meter-bar { position: absolute; inset: 0; border-radius: 6px; transform-origin: left center; background: linear-gradient(90deg, #E53935, #FDD835 46%, #43A047 60%, #FDD835 80%, #E53935); }
+  .play .meter-bar { animation: zoneIn 1s var(--ease) both; }
+  @keyframes zoneIn { from { transform: scaleX(0); opacity: 0; } to { transform: scaleX(1); opacity: 1; } }
+  .meter-line { position: absolute; top: -6px; bottom: -6px; border-left: 2px dashed #374151; z-index: 2; }
+  .play .meter-line { animation: fadeUp 0.6s var(--ease) 0.9s both; }
+  .meter-line .num { position: absolute; top: -17px; left: 0; transform: translateX(-50%); font-size: 10px; font-weight: 700; color: #374151; white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .meter-line .num small { font-weight: 500; color: var(--grey); margin-right: 2px; }
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+  .meter-dot { position: absolute; top: 50%; left: 0; z-index: 3; width: 18px; height: 18px; margin: -9px 0 0 -9px; border-radius: 50%; background: #fff; border: 3px solid #111827; box-shadow: 0 1px 4px rgba(0,0,0,0.3); transition: left 1.3s var(--ease); }
+  .meter-scale { display: flex; justify-content: space-between; font-size: 10px; color: var(--grey); margin-top: 7px; }
+
+  .stock-warning { display: flex; gap: 8px; align-items: flex-start; margin-top: 12px; padding: 10px 12px; border-radius: 8px; background: var(--red-bg); border: 1px solid #FFCDD2; color: var(--red); font-size: 12px; font-weight: 500; line-height: 1.45; animation: warnIn 0.5s var(--ease); }
+  .meter-note { font-size: 10px; color: var(--grey); margin-top: 4px; line-height: 1.4; }
+  .stock-warning[hidden] { display: none; }
+  .stock-warning .w-icon { flex: none; animation: wiggle 2.6s ease-in-out infinite; }
+  @keyframes warnIn { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: none; } }
+  @keyframes wiggle { 0%, 80%, 100% { transform: rotate(0); } 85% { transform: rotate(-12deg); } 90% { transform: rotate(10deg); } 95% { transform: rotate(-6deg); } }
+
+  .main-area { display: grid; grid-template-columns: 65% 35%; gap: 16px; }
+  .col-right { display: flex; flex-direction: column; gap: 16px; }
+
+  .chart-wrap { width: 100%; margin-bottom: 16px; position: relative; padding-top: 10px; }
+  svg { display: block; width: 100%; height: auto; overflow: visible; }
+  .tooltip { position: absolute; background: rgba(17,24,39,0.95); color: #fff; padding: 10px 14px; border-radius: 8px; font-size: 12px; pointer-events: none; opacity: 0; transition: opacity 0.15s, transform 0.15s, left 0.12s ease-out; transform: translateY(10px); z-index: 10; box-shadow: 0 4px 6px rgba(0,0,0,0.1); min-width: 140px; }
+  .tooltip.visible { opacity: 1; transform: translateY(0); }
+  .tooltip-title { font-weight: 700; margin-bottom: 6px; border-bottom: 1px solid rgba(255,255,255,0.2); padding-bottom: 4px; }
+  .tooltip-row { display: flex; justify-content: space-between; margin-bottom: 3px; }
+  .tooltip-row span:first-child { color: #9CA3AF; }
+  .tooltip-row span:last-child { font-weight: 600; }
+  .tracker-line { position: absolute; top: 10px; bottom: 40px; width: 1px; background: rgba(156,163,175,0.5); pointer-events: none; opacity: 0; z-index: 5; transition: opacity 0.15s, left 0.12s ease-out; }
+  .tracker-line.visible { opacity: 1; }
+
+  @keyframes drawLine { to { stroke-dashoffset: 0; } }
+  @keyframes fadeInBand { from { opacity: 0; } to { opacity: 0.55; } }
+  @keyframes popIn { from { opacity: 0; transform: scale(0); } to { opacity: 1; transform: scale(1); } }
+  .animated-line { stroke-dasharray: 3000; stroke-dashoffset: 3000; animation: drawLine 1.6s var(--ease) forwards; }
+  .animated-band { animation: fadeInBand 1s ease-out 0.3s forwards; }
+  .marker { transform-box: fill-box; transform-origin: center; opacity: 0; animation: popIn 0.4s var(--ease) forwards; cursor: pointer; transition: r 0.15s; }
+  .marker:hover { r: 6; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  th { text-align: left; font-weight: 600; color: var(--grey); padding: 8px 10px; border-bottom: 1px solid var(--border); font-size: 11px; text-transform: uppercase; letter-spacing: 0.03em; white-space: nowrap; }
+  td { padding: 10px 10px; border-bottom: 1px solid #F3F4F6; vertical-align: middle; }
+  tr:last-child td { border-bottom: none; }
+  tbody tr { transition: background 0.15s; }
+  tbody tr:hover { background: #F9FAFB; }
+  tbody tr.row-in { opacity: 0; animation: rowIn 0.45s var(--ease) forwards; animation-delay: calc(var(--r, 0) * 45ms + 250ms); }
+  @keyframes rowIn { from { opacity: 0; transform: translateX(-8px); } to { opacity: 1; transform: translateX(0); } }
+  .table-footer { margin-top: 12px; font-size: 11px; color: var(--grey); }
+  .empty-cell { text-align: center; color: var(--grey); padding: 22px 10px; }
+  .yes { color: var(--green); font-weight: 600; }
+  .no { color: var(--red); font-weight: 600; }
+  .txt-red { color: var(--red); font-weight: 600; }
+
+  /* Batch expiry colouring */
+  tr.exp-red { background: #FFF5F5; }
+  tr.exp-red:hover { background: #FFEBEE; }
+  tr.exp-red td:first-child { box-shadow: inset 3px 0 0 var(--red); }
+  tr.exp-amber td:first-child { box-shadow: inset 3px 0 0 var(--amber); }
+  tr.exp-green td:first-child { box-shadow: inset 3px 0 0 #66BB6A; }
+  .exp-legend { display: flex; gap: 14px; margin-top: 12px; font-size: 11px; color: var(--grey); flex-wrap: wrap; }
+  .exp-legend i { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 5px; }
+
+  .bottom-area { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .footer { display: flex; justify-content: space-between; align-items: center; font-size: 11px; color: var(--grey); padding: 8px 4px; gap: 12px; flex-wrap: wrap; }
+  .footer .conf { color: var(--amber-text); font-weight: 500; }
+  .badge { background: #F3F4F6; padding: 4px 12px; border-radius: 12px; font-weight: 500; }
+
+  /* ---------- Data entry ---------- */
+  .entry { max-width: 1440px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; }
+  .entry-head { display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 12px; }
+  .entry-head h1 { font-size: 20px; font-weight: 700; letter-spacing: -0.01em; }
+  .entry-head p { color: var(--grey); margin-top: 4px; font-size: 12px; }
+  .seg { position: relative; display: flex; background: #E5E7EB; border-radius: 10px; padding: 4px; }
+  .seg-pill { position: absolute; top: 4px; bottom: 4px; left: 4px; background: var(--card); border-radius: 7px; box-shadow: 0 1px 3px rgba(0,0,0,0.12); transition: transform 0.35s var(--ease), width 0.35s var(--ease); }
+  .seg-btn { position: relative; z-index: 1; background: transparent; border: none; padding: 9px 20px; font-size: 13px; font-weight: 600; color: var(--grey); cursor: pointer; border-radius: 7px; display: flex; align-items: center; gap: 8px; transition: color 0.2s; }
+  .seg-btn.active { color: var(--text); }
+  .count { background: #F3F4F6; color: var(--grey); font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 10px; min-width: 20px; text-align: center; }
+  .seg-btn.active .count { background: var(--accent); color: #fff; }
+  .entry-grid { display: grid; grid-template-columns: 1.15fr 0.85fr; gap: 16px; align-items: start; }
+  .section-view { display: none; flex-direction: column; gap: 16px; }
+  .section-view.active { display: flex; animation: pageIn 0.4s var(--ease); }
+  .form-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px 16px; }
+  .field { display: flex; flex-direction: column; gap: 5px; }
+  .field.wide { grid-column: 1 / -1; }
+  .field label { font-size: 11px; font-weight: 600; color: var(--grey); }
+  .field label .req { color: var(--red); margin-left: 2px; }
+  .field input, .field select, .field textarea { font: inherit; font-size: 13px; padding: 9px 11px; border: 1px solid var(--border); border-radius: 8px; background: #fff; color: var(--text); transition: border-color 0.2s, box-shadow 0.2s; }
+  .field textarea { resize: vertical; min-height: 56px; }
+  .field input:focus, .field select:focus, .field textarea:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(31,111,235,0.15); }
+  .field.invalid input, .field.invalid select { border-color: var(--red); background: var(--red-bg); animation: shake 0.35s; }
+  @keyframes shake { 20%, 60% { transform: translateX(-4px); } 40%, 80% { transform: translateX(4px); } }
+  .form-actions { display: flex; gap: 10px; margin-top: 16px; }
+  .btn { font: inherit; font-size: 13px; font-weight: 600; border: none; border-radius: 8px; padding: 10px 18px; cursor: pointer; transition: transform 0.15s, box-shadow 0.2s, background 0.2s; }
+  .btn:active { transform: scale(0.97); }
+  .btn.primary { background: var(--accent); color: #fff; }
+  .btn.primary:hover { background: #1a5fd0; box-shadow: 0 4px 12px rgba(31,111,235,0.3); }
+  .btn.ghost { background: #F3F4F6; color: var(--text); }
+  .btn.ghost:hover { background: #E5E7EB; }
+  .btn.small { padding: 6px 12px; font-size: 12px; }
+  .dropzone { border: 2px dashed #CBD5E1; border-radius: 10px; padding: 28px 16px; text-align: center; background: #FAFBFC; cursor: pointer; transition: border-color 0.2s, background 0.2s, transform 0.2s; }
+  .dropzone:hover, .dropzone.drag { border-color: var(--accent); background: #F0F6FF; }
+  .dropzone.drag { transform: scale(1.01); }
+  .dz-icon { font-size: 26px; display: inline-block; animation: bob 2.4s ease-in-out infinite; }
+  @keyframes bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
+  .dz-title { font-weight: 600; margin-top: 8px; }
+  .dz-sub { color: var(--grey); font-size: 11px; margin-top: 4px; }
+  .upload-meta { margin-top: 12px; display: flex; gap: 8px; flex-wrap: wrap; }
+  .hint { margin-top: 12px; font-size: 11px; color: var(--grey); line-height: 1.5; }
+  .hint code { background: #F3F4F6; padding: 1px 5px; border-radius: 4px; font-size: 11px; }
+  .log-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+  .table-scroll { overflow-x: auto; }
+  .empty { text-align: center; color: var(--grey); padding: 28px 0; font-size: 12px; }
+  .del { background: transparent; border: none; color: #9CA3AF; font-size: 16px; cursor: pointer; border-radius: 6px; width: 26px; height: 26px; transition: background 0.15s, color 0.15s; }
+  .del:hover { background: var(--red-bg); color: var(--red); }
+  tr.new-row { animation: flash 1.6s ease-out; }
+  @keyframes flash { 0% { background: #DBEAFE; transform: translateX(-12px); opacity: 0; } 25% { transform: none; opacity: 1; } 100% { background: transparent; } }
+  .toast { position: fixed; bottom: 24px; left: 50%; transform: translate(-50%, 30px); background: #111827; color: #fff; padding: 11px 18px; border-radius: 10px; font-size: 12px; font-weight: 500; opacity: 0; pointer-events: none; transition: opacity 0.3s, transform 0.3s var(--ease); z-index: 50; box-shadow: 0 8px 24px rgba(0,0,0,0.2); max-width: 90vw; }
+  .toast.show { opacity: 1; transform: translate(-50%, 0); }
+  .toast.error { background: var(--red); }
+
+  @media (max-width: 1100px) {
+    .main-area, .entry-grid { grid-template-columns: 1fr; }
+    .banner { grid-template-columns: 1fr; }
+    .bottom-area { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 600px) { .form-grid { grid-template-columns: 1fr; } .seg-btn { padding: 9px 12px; } }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: 0.01ms !important; animation-delay: 0ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
+  }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="brand">Kjeldsens<small>Inbound Logistics</small></div>
+  <div class="nav" id="nav">
+    <div class="nav-pill" id="navPill"></div>
+    <button class="nav-btn active" data-page="dashboard">Dashboard</button>
+    <button class="nav-btn" data-page="entry">Data Entry</button>
+  </div>
+</div>
+
+<!-- ================= PAGE 1: DASHBOARD ================= -->
+<div class="page active" id="page-dashboard">
+<div class="dashboard">
+
+  <div class="banner">
+    <div class="metric reveal" style="--i:0">
+      <div class="metric-label">Current Stock</div>
+      <div class="metric-value"><span id="v-stock" data-count="0">0</span> <span class="unit">units</span></div>
+
+      <div class="stock-meter" id="stockMeter">
+        <div class="meter-track">
+          <div class="meter-bar" id="meterBar"></div>
+          <div class="meter-line" id="lnMin"><span class="num"><small>Min</small><span id="numMin">930</span></span></div>
+          <div class="meter-line" id="lnMax"><span class="num"><small>Max</small><span id="numMax">1,600</span></span></div>
+          <div class="meter-dot" id="meterDot"></div>
+        </div>
+        <div class="meter-scale"><span>0</span><span id="scaleMax">2,000</span></div>
+        <div class="meter-note" id="meterNote"></div>
+      </div>
+
+      <span class="pill green" id="stockPill">OK · within optimal range</span>
+      <div class="stock-warning" id="stockWarning" hidden>
+        <span class="w-icon">⚠️</span><span id="stockWarningText"></span>
+      </div>
+    </div>
+
+    <div class="metric reveal" style="--i:1">
+      <div class="metric-label">In-Transit</div>
+      <div class="metric-value"><span id="v-transit" data-count="0">0</span> <span class="unit">units</span></div>
+      <span class="pill grey" id="transitPill">No open orders</span>
+    </div>
+
+    <div class="metric primary reveal" style="--i:2">
+      <div class="metric-label">Days to CNY Order Deadline</div>
+      <div class="metric-value"><span id="v-cny" data-count="22">22</span> <span class="unit">days</span></div>
+      <span class="pill amber pulse" id="cnyPill">Prepare order</span>
+    </div>
+  </div>
+
+  <div class="main-area">
+    <div class="card reveal" style="--i:3">
+      <div class="card-header">
+        <div class="card-title">Demand Forecast</div>
+        <div class="toggle-group" id="toggleGroup">
+          <div class="toggle-pill" id="togglePill"></div>
+          <button class="toggle-btn" onclick="setView('3M')">3M</button>
+          <button class="toggle-btn active" onclick="setView('6M')">6M</button>
+          <button class="toggle-btn" onclick="setView('12M')">12M</button>
+        </div>
+      </div>
+      <div class="card-title" style="margin-bottom:16px;">
+        <span class="legend">
+          <span><span class="swatch" style="background:#BBDEFB;"></span>Expected demand range</span>
+          <span><span class="swatch" style="background:#1F6FEB;height:4px;"></span>Ordered quantity</span>
+        </span>
+      </div>
+      <div class="chart-wrap" id="chartWrap">
+        <div class="tooltip" id="tooltip">
+          <div class="tooltip-title" id="tt-title">Period</div>
+          <div class="tooltip-row"><span>Ordered Qty:</span> <span id="tt-ord">0</span></div>
+          <div class="tooltip-row"><span>Demand Low:</span> <span id="tt-low">0</span></div>
+          <div class="tooltip-row"><span>Demand High:</span> <span id="tt-high">0</span></div>
+        </div>
+        <div class="tracker-line" id="trackerLine"></div>
+        <svg id="forecastChart" viewBox="0 0 720 300" preserveAspectRatio="xMidYMid meet">
+          <g id="chart-axes"></g>
+          <g id="chart-cny"></g>
+          <path id="area-band" fill="#BBDEFB" opacity="0" d=""/>
+          <path id="dashed-high" fill="none" stroke="#64B5F6" stroke-width="1.5" stroke-dasharray="4 4" d=""/>
+          <path id="dashed-low"  fill="none" stroke="#90CAF9" stroke-width="1.5" stroke-dasharray="4 4" d=""/>
+          <path id="solid-line" fill="none" stroke="#1F6FEB" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" d=""/>
+          <g id="line-markers"></g>
+          <g id="x-axis-labels" font-size="10" fill="#6B7280" text-anchor="middle"></g>
+          <g id="hover-zones" cursor="crosshair"></g>
+        </svg>
+      </div>
+      <table>
+        <thead><tr><th>Period</th><th>Demand Range</th><th>Ordered Qty</th><th>In Range?</th></tr></thead>
+        <tbody id="forecast-table-body"></tbody>
+      </table>
+      <div class="table-footer" id="table-footer-text">Showing next 6 months.</div>
+    </div>
+
+    <div class="col-right">
+      <div class="card reveal" style="--i:4; flex: 1;">
+        <div class="card-title">Open Orders — In Transit</div>
+        <table>
+          <thead><tr><th>Order ID</th><th>Qty</th><th>Expected Arrival</th><th>Days Elapsed</th><th>Remaining Lead Time</th></tr></thead>
+          <tbody id="open-orders-body"></tbody>
+        </table>
+        <div class="table-footer" id="lead-footer">Avg actual lead time: — (plan: 65)</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="bottom-area">
+    <div class="card reveal" style="--i:5">
+      <div class="card-title">Inbound Pending — Next 14 Days</div>
+      <table>
+        <thead><tr><th>Order ID</th><th>Expected Arrival</th><th>Qty</th><th>Transport Mode</th><th>Status</th></tr></thead>
+        <tbody id="inbound-body"></tbody>
+      </table>
+    </div>
+    <div class="card reveal" style="--i:6">
+      <div class="card-title">Batch Expiry Alerts</div>
+      <table>
+        <thead><tr><th>Batch ID</th><th>Qty</th><th>Expiry Date</th><th>Remaining Shelf Life</th></tr></thead>
+        <tbody id="expiry-body"></tbody>
+      </table>
+      <div class="exp-legend">
+        <span><i style="background:var(--red)"></i>6 months or less</span>
+        <span><i style="background:var(--amber)"></i>7–12 months</span>
+        <span><i style="background:#66BB6A"></i>Over 12 months</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer reveal" style="--i:7">
+    <span id="asOf">Data as of —</span>
+    <span class="conf">Forecast confidence: CNY multiplier 2.8× — based on limited history, review weekly</span>
+    <span class="badge">Dashboard is view-only. Log records on the Data Entry page.</span>
+  </div>
+</div>
+</div>
+
+<!-- ================= PAGE 2: DATA ENTRY ================= -->
+<div class="page" id="page-entry">
+<div class="entry">
+  <div class="entry-head">
+    <div>
+      <h1>Data Entry</h1>
+      <p>Log records one at a time, or upload an Excel / CSV file. The dashboard updates from these records. Saved in this browser.</p>
+    </div>
+    <div class="seg" id="seg">
+      <div class="seg-pill" id="segPill"></div>
+      <button class="seg-btn active" data-sec="orders">Orders <span class="count" id="count-orders">0</span></button>
+      <button class="seg-btn" data-sec="deliveries">Deliveries <span class="count" id="count-deliveries">0</span></button>
+      <button class="seg-btn" data-sec="dispatches">Dispatches <span class="count" id="count-dispatches">0</span></button>
+    </div>
+  </div>
+  <div id="sections"></div>
+</div>
+</div>
+
+<input type="file" id="fileInput" accept=".xlsx,.xls,.csv" hidden>
+<div class="toast" id="toast"></div>
+
+<script>
+/* =====================================================
+   SHARED HELPERS
+   ===================================================== */
+const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const DAY = 86400000;
+const fmt = n => Number(n).toLocaleString('en-US');
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const norm = s => String(s).toLowerCase().replace(/[^a-z0-9]/g, '');
+const startOfDay = d => new Date(d.getFullYear(), d.getMonth(), d.getDate());
+const parseISO = s => {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(s || ''));
+  if (!m) return null;
+  const d = new Date(+m[1], +m[2] - 1, +m[3]);
+  return isNaN(d) ? null : d;
+};
+const fmtDate = d => `${String(d.getDate()).padStart(2, '0')} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
+const todayISO = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
+const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+function movePill(pillId, activeEl, pad) {
+  const pill = document.getElementById(pillId);
+  if (!activeEl || !activeEl.offsetWidth) return;
+  pill.style.width = activeEl.offsetWidth + 'px';
+  pill.style.transform = `translateX(${activeEl.offsetLeft - pad}px)`;
+}
+function showPage(name) {
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.page === name));
+  document.querySelectorAll('.page').forEach(p => p.classList.toggle('active', p.id === 'page-' + name));
+  movePill('navPill', document.querySelector('.nav-btn.active'), 3);
+  if (name === 'dashboard') renderDashboard();
+  else movePill('segPill', document.querySelector('.seg-btn.active'), 4);
+  try { history.replaceState(null, '', '#' + name); } catch (e) {}
+}
+document.querySelectorAll('.nav-btn').forEach(b => b.addEventListener('click', () => showPage(b.dataset.page)));
+
+/* =====================================================
+   RECORD STORE (shared by both pages)
+   ===================================================== */
+const STORE_KEY = 'kjeldsens_records_v1';
+let records = { orders: [], deliveries: [], dispatches: [] };
+try { const s = JSON.parse(localStorage.getItem(STORE_KEY)); if (s) records = Object.assign(records, s); } catch (e) {}
+const persist = () => { try { localStorage.setItem(STORE_KEY, JSON.stringify(records)); } catch (e) {} };
+
+/* =====================================================
+   DASHBOARD
+   ===================================================== */
+// Forecast (prediction) numbers — kept as-is
+const forecastSets = {
+  '3M': [
+    { date: 'Nov 1', low: 200, high: 300 }, { date: 'Nov 2', low: 200, high: 310 },
+    { date: 'Dec 1', low: 220, high: 350 }, { date: 'Dec 2', low: 250, high: 450 },
+    { date: 'Jan 1', low: 300, high: 600 }, { date: 'Jan 2', low: 300, high: 650 }
+  ],
+  '6M': [
+    { date: 'Nov 1', low: 200, high: 300 }, { date: 'Nov 2', low: 200, high: 310 },
+    { date: 'Dec 1', low: 220, high: 350 }, { date: 'Dec 2', low: 250, high: 450 },
+    { date: 'Jan 1', low: 300, high: 600 }, { date: 'Jan 2', low: 300, high: 650 },
+    { date: 'Feb 1', low: 250, high: 450 }, { date: 'Feb 2', low: 220, high: 380 },
+    { date: 'Mar 1', low: 180, high: 280 }, { date: 'Mar 2', low: 170, high: 260 },
+    { date: 'Apr 1', low: 160, high: 240 }, { date: 'Apr 2', low: 150, high: 230 }
+  ],
+  '12M': [
+    { date: 'Nov', low: 200, high: 300 }, { date: 'Dec', low: 220, high: 450 },
+    { date: 'Jan', low: 300, high: 650 }, { date: 'Feb', low: 250, high: 450 },
+    { date: 'Mar', low: 180, high: 280 }, { date: 'Apr', low: 160, high: 240 },
+    { date: 'May', low: 150, high: 220 }, { date: 'Jun', low: 140, high: 210 },
+    { date: 'Jul', low: 150, high: 220 }, { date: 'Aug', low: 160, high: 250 },
+    { date: 'Sep', low: 180, high: 300 }, { date: 'Oct', low: 200, high: 320 }
+  ]
+};
+const FORECAST_START = { year: 2026, month: 10 };       // Nov 2026
+let OPTIMAL = { min: 0, max: 0 };                // optimal stock range (units)
+const CNY_DEADLINE = new Date(2026, 10, 23);            // 23 Nov 2026
+const PLAN_LEAD_DAYS = 65;
+let currentData = [], currentTf = '6M', ordersOutside = 0;
+
+/* ---- derive everything from logged records ---- */
+function computeState() {
+  const today = startOfDay(new Date());
+  const q = r => Number(r.qty) || 0;
+
+  const receivedAll = {};    // by order id (any condition)
+  let usableReceived = 0;
+  records.deliveries.forEach(d => {
+    receivedAll[d.orderId] = (receivedAll[d.orderId] || 0) + q(d);
+    if (d.condition !== 'Damaged') usableReceived += q(d);
+  });
+  const dispatched = records.dispatches.reduce((s, r) => s + q(r), 0);
+  const stock = Math.max(0, usableReceived - dispatched);
+
+  const open = records.orders
+    .map(o => ({ ...o, remaining: q(o) - (receivedAll[o.id] || 0) }))
+    .filter(o => o.remaining > 0)
+    .sort((a, b) => String(a.eta).localeCompare(String(b.eta)));
+  // In-transit = total ordered − total delivered
+  const totalOrdered = records.orders.reduce((s, o) => s + q(o), 0);
+  const totalDelivered = records.deliveries.reduce((s, d) => s + q(d), 0);
+  const inTransit = Math.max(0, totalOrdered - totalDelivered);
+
+  // actual lead time
+  const lead = [];
+  records.deliveries.forEach(d => {
+    const o = records.orders.find(x => x.id === d.orderId);
+    const a = o && parseISO(o.orderDate), b = parseISO(d.receivedDate);
+    if (a && b && b >= a) lead.push((b - a) / DAY);
+  });
+  const avgLead = lead.length ? Math.round(lead.reduce((s, x) => s + x, 0) / lead.length) : null;
+
+  // batches
+  const batches = {};
+  records.deliveries.forEach(d => {
+    if (d.condition === 'Damaged' || !d.batchId) return;
+    const b = batches[d.batchId] || (batches[d.batchId] = { id: d.batchId, qty: 0, expiry: null });
+    b.qty += q(d);
+    const e = parseISO(d.expiry);
+    if (e && (!b.expiry || e < b.expiry)) b.expiry = e;
+  });
+  records.dispatches.forEach(d => { if (d.batchId && batches[d.batchId]) batches[d.batchId].qty -= q(d); });
+  const expiring = Object.values(batches).filter(b => b.qty > 0 && b.expiry).sort((a, b) => a.expiry - b.expiry);
+
+  return { today, stock, open, inTransit, avgLead, expiring };
+}
+
+/* Optimal stock range = expected demand (low / high) summed over the next lead-time window,
+   using each period's own forecast range. It shifts as the periods change (e.g. CNY peak). */
+function computeOptimal(today) {
+  const base = forecastSets['6M'], last = base.length - 1;
+  let lo = 0, hi = 0;
+  for (let d = 0; d < PLAN_LEAD_DAYS; d++) {
+    const dt = new Date(today.getFullYear(), today.getMonth(), today.getDate() + d);
+    const m = (dt.getFullYear() - FORECAST_START.year) * 12 + dt.getMonth() - FORECAST_START.month;
+    const idx = Math.min(last, Math.max(0, m * 2 + (dt.getDate() > 15 ? 1 : 0)));
+    lo += base[idx].low / 15; hi += base[idx].high / 15;
+  }
+  return { min: Math.round(lo / 10) * 10, max: Math.round(hi / 10) * 10 };
+}
+
+function orderedSeries(tf, len) {
+  const out = new Array(len).fill(0); ordersOutside = 0;
+  records.orders.forEach(o => {
+    const d = parseISO(o.orderDate); if (!d) { ordersOutside++; return; }
+    const m = (d.getFullYear() - FORECAST_START.year) * 12 + d.getMonth() - FORECAST_START.month;
+    if (m < 0) { ordersOutside++; return; }
+    const idx = tf === '12M' ? m : m * 2 + (d.getDate() > 15 ? 1 : 0);
+    if (idx < len) out[idx] += Number(o.qty) || 0; else ordersOutside++;
+  });
+  return out;
+}
+
+/* ---- count-up ---- */
+function countUp(el, duration = 1200, delay = 350) {
+  const target = parseInt(el.dataset.count, 10) || 0;
+  if (reduceMotion || target === 0) { el.textContent = fmt(target); return; }
+  const start = performance.now() + delay;
+  function tick(now) {
+    const t = Math.min(Math.max((now - start) / duration, 0), 1);
+    el.textContent = fmt(Math.round(target * (1 - Math.pow(1 - t, 4))));
+    if (t < 1) requestAnimationFrame(tick);
+  }
+  el.textContent = '0';
+  requestAnimationFrame(tick);
+}
+function setCount(id, n) { const el = document.getElementById(id); el.dataset.count = n; countUp(el); }
+
+/* ---- stock meter + warning ---- */
+function updateMeter(stock, inTransit) {
+  const scaleMax = Math.max(2000, Math.ceil(Math.max(stock * 1.1, OPTIMAL.max * 1.25) / 500) * 500);
+  const minP = OPTIMAL.min / scaleMax * 100, maxP = OPTIMAL.max / scaleMax * 100;
+  const val = Math.min(stock / scaleMax * 100, 100);
+
+  const span = maxP - minP, g1 = minP + span * 0.3, g2 = maxP - span * 0.3;
+  document.getElementById('meterBar').style.background =
+    `linear-gradient(90deg, #E53935 0%, #FDD835 ${minP}%, #43A047 ${g1}%, #43A047 ${g2}%, #FDD835 ${maxP}%, #E53935 100%)`;
+  document.getElementById('lnMin').style.left = minP + '%';
+  document.getElementById('lnMax').style.left = maxP + '%';
+  document.getElementById('numMin').textContent = fmt(OPTIMAL.min);
+  document.getElementById('numMax').textContent = fmt(OPTIMAL.max);
+  document.getElementById('scaleMax').textContent = fmt(scaleMax);
+  document.getElementById('meterNote').textContent =
+    `Optimal range = forecast demand (low–high) over the next ${PLAN_LEAD_DAYS}-day lead time; updates each period.`;
+
+  const meter = document.getElementById('stockMeter');
+  meter.classList.remove('play'); void meter.offsetWidth; meter.classList.add('play');
+
+  const dot = document.getElementById('meterDot');
+  dot.style.transition = 'none'; dot.style.left = '0%'; void dot.offsetWidth;
+  dot.style.transition = reduceMotion ? 'none' : ''; dot.style.left = val + '%';
+
+  const pill = document.getElementById('stockPill'), warn = document.getElementById('stockWarning'), wt = document.getElementById('stockWarningText');
+  const wasHidden = warn.hidden;
+  if (stock < OPTIMAL.min) {
+    pill.className = 'pill red'; pill.textContent = 'Below optimal range';
+    wt.textContent = `Low stock: ${fmt(OPTIMAL.min - stock)} units below the optimal minimum of ${fmt(OPTIMAL.min)}. ` +
+      (inTransit > 0 ? `${fmt(inTransit)} units are in transit — check arrival dates.` : 'No orders in transit — consider placing an order.');
+    warn.hidden = false;
+  } else if (stock > OPTIMAL.max) {
+    pill.className = 'pill red'; pill.textContent = 'Above optimal range';
+    wt.textContent = `Overstock: ${fmt(stock - OPTIMAL.max)} units above the optimal maximum of ${fmt(OPTIMAL.max)}. Consider holding new orders.`;
+    warn.hidden = false;
+  } else {
+    pill.className = 'pill green'; pill.textContent = 'OK · within optimal range';
+    warn.hidden = true;
+  }
+  if (!warn.hidden) { warn.style.animation = 'none'; void warn.offsetWidth; warn.style.animation = ''; }
+}
+
+/* ---- tables ---- */
+const emptyRow = (cols, msg) => `<tr><td colspan="${cols}" class="empty-cell">${msg}</td></tr>`;
+
+function renderTables(S) {
+  // open orders
+  document.getElementById('open-orders-body').innerHTML = S.open.length ? S.open.map((o, i) => {
+    const od = parseISO(o.orderDate), eta = parseISO(o.eta);
+    const elapsed = od ? Math.max(0, Math.round((S.today - od) / DAY)) : '—';
+    let rem = '—';
+    if (eta) {
+      const d = Math.round((eta - S.today) / DAY);
+      rem = d < 0 ? `<span class="txt-red">Overdue ${-d} day${d === -1 ? '' : 's'}</span>` : d === 0 ? 'Due today' : `${d} day${d === 1 ? '' : 's'}`;
+    }
+    return `<tr class="row-in" style="--r:${i}"><td>${esc(o.id)}</td><td>${fmt(o.remaining)}</td><td>${eta ? fmtDate(eta) : '—'}</td><td>${elapsed}</td><td>${rem}</td></tr>`;
+  }).join('') : emptyRow(5, 'No open orders');
+  document.getElementById('lead-footer').textContent =
+    `Avg actual lead time: ${S.avgLead === null ? '—' : S.avgLead + ' days'} (plan: ${PLAN_LEAD_DAYS})`;
+
+  // inbound next 14 days
+  const inbound = S.open.filter(o => { const e = parseISO(o.eta); return e && (e - S.today) / DAY <= 14; });
+  document.getElementById('inbound-body').innerHTML = inbound.length ? inbound.map((o, i) => {
+    const eta = parseISO(o.eta), d = Math.round((eta - S.today) / DAY);
+    const st = d < 0 ? '<span class="pill red">Overdue</span>' : d <= 3 ? '<span class="pill amber">Confirm dock</span>' : '<span class="pill green">Scheduled</span>';
+    return `<tr class="row-in" style="--r:${i}"><td>${esc(o.id)}</td><td>${fmtDate(eta)}</td><td>${fmt(o.remaining)}</td><td>${esc(o.mode || '—')}</td><td>${st}</td></tr>`;
+  }).join('') : emptyRow(5, 'Nothing due in the next 14 days');
+
+  // batch expiry
+  document.getElementById('expiry-body').innerHTML = S.expiring.length ? S.expiring.map((b, i) => {
+    const t = S.today, e = b.expiry;
+    let months = (e.getFullYear() - t.getFullYear()) * 12 + e.getMonth() - t.getMonth() - (e.getDate() < t.getDate() ? 1 : 0);
+    const expired = e < t;
+    const cls = expired || months <= 6 ? 'red' : months <= 12 ? 'amber' : 'green';
+    const label = expired ? 'Expired' : months < 1 ? `${Math.max(0, Math.ceil((e - t) / DAY))} days` : `${months} month${months === 1 ? '' : 's'}`;
+    return `<tr class="row-in exp-${cls}" style="--r:${i}"><td>${esc(b.id)}</td><td>${fmt(b.qty)}</td><td>${fmtDate(e)}</td><td><span class="pill ${cls}">${label}</span></td></tr>`;
+  }).join('') : emptyRow(4, 'No batches with expiry dates');
+}
+
+/* ---- main render ---- */
+function renderDashboard() {
+  const S = computeState();
+  OPTIMAL = computeOptimal(S.today);
+  setCount('v-stock', S.stock);
+  setCount('v-transit', S.inTransit);
+  document.getElementById('transitPill').textContent = S.open.length ? `${S.open.length} shipment${S.open.length === 1 ? '' : 's'}` : 'No open orders';
+
+  const days = Math.max(0, Math.ceil((CNY_DEADLINE - S.today) / DAY));
+  setCount('v-cny', days);
+  const cp = document.getElementById('cnyPill');
+  if (days > 0) { cp.className = 'pill amber pulse'; cp.textContent = 'Prepare order'; }
+  else { cp.className = 'pill red'; cp.textContent = 'Deadline passed'; }
+
+  updateMeter(S.stock, S.inTransit);
+  renderTables(S);
+  setView(currentTf);
+
+  const n = new Date();
+  document.getElementById('asOf').textContent = `Data as of ${fmtDate(n)}, ${String(n.getHours()).padStart(2, '0')}:${String(n.getMinutes()).padStart(2, '0')}`;
+}
+
+/* ---- chart ---- */
+function curveSegments(points) {
+  let d = '';
+  for (let i = 0; i < points.length - 1; i++) {
+    const p0 = i === 0 ? points[i] : points[i - 1], p1 = points[i], p2 = points[i + 1];
+    const p3 = i + 2 < points.length ? points[i + 2] : p2;
+    d += ` C ${p1[0] + (p2[0] - p0[0]) / 6},${p1[1] + (p2[1] - p0[1]) / 6} ${p2[0] - (p3[0] - p1[0]) / 6},${p2[1] - (p3[1] - p1[1]) / 6} ${p2[0]},${p2[1]}`;
+  }
+  return d;
+}
+const getSmoothPath = pts => pts.length ? `M ${pts[0][0]},${pts[0][1]}` + curveSegments(pts) : '';
+function getBandPath(upper, lower) {
+  const rev = [...lower].reverse();
+  return getSmoothPath(upper) + ` L ${rev[0][0]},${rev[0][1]}` + curveSegments(rev) + ' Z';
+}
+
+function setView(tf) {
+  currentTf = tf;
+  document.querySelectorAll('.toggle-btn').forEach(btn => btn.classList.toggle('active', btn.textContent === tf));
+  movePill('togglePill', document.querySelector('.toggle-btn.active'), 3);
+
+  const base = forecastSets[tf], ordered = orderedSeries(tf, base.length);
+  const data = base.map((d, i) => ({ ...d, ord: ordered[i] }));
+  currentData = data;
+
+  const L = 60, R = 680, B = 260, T = 20;
+  const top = Math.max(...data.map(d => Math.max(d.high, d.ord)));
+  const maxU = Math.max(800, Math.ceil(top / 200) * 200), step = maxU > 1600 ? 400 : 200;
+  const xStep = (R - L) / (data.length - 1), yS = (B - T) / maxU;
+  const hi = [], lo = [], od = [];
+  let xl = '', hz = '';
+  data.forEach((d, i) => {
+    const x = L + i * xStep;
+    hi.push([x, B - d.high * yS]); lo.push([x, B - d.low * yS]); od.push([x, B - d.ord * yS]);
+    xl += `<text x="${x}" y="280">${d.date}</text>`;
+    const zl = i === 0 ? L - 20 : x - xStep / 2, zr = i === data.length - 1 ? R + 20 : x + xStep / 2;
+    hz += `<rect x="${zl}" y="${T}" width="${zr - zl}" height="${B - T}" fill="transparent" data-index="${i}"/>`;
+  });
+
+  const band = document.getElementById('area-band'), line = document.getElementById('solid-line');
+  band.classList.remove('animated-band'); line.classList.remove('animated-line'); void line.offsetWidth;
+  band.setAttribute('d', getBandPath(hi, lo));
+  line.setAttribute('d', getSmoothPath(od));
+  document.getElementById('dashed-high').setAttribute('d', getSmoothPath(hi));
+  document.getElementById('dashed-low').setAttribute('d', getSmoothPath(lo));
+  band.classList.add('animated-band'); line.classList.add('animated-line');
+
+  document.getElementById('line-markers').innerHTML = od.map((p, i) =>
+    `<circle class="marker" cx="${p[0]}" cy="${p[1]}" r="4" fill="#1F6FEB" stroke="#fff" stroke-width="1.5" style="animation-delay:${600 + i * 70}ms"/>`).join('');
+  document.getElementById('x-axis-labels').innerHTML = xl;
+  document.getElementById('hover-zones').innerHTML = hz;
+
+  let ax = '';
+  for (let j = 0; j <= maxU; j += step) {
+    const y = B - j * yS;
+    ax += `<line x1="${L}" y1="${y}" x2="${R}" y2="${y}" stroke="#E5E7EB" stroke-width="1"/><text x="${L - 6}" y="${y + 4}" font-size="10" fill="#6B7280" text-anchor="end">${j}</text>`;
+  }
+  document.getElementById('chart-axes').innerHTML = ax;
+
+  let cny = '';
+  const jan = data.findIndex(d => d.date.includes('Jan'));
+  if (jan !== -1) {
+    const xs = L + (jan - 0.5) * xStep, xe = Math.min(L + (jan + 1.5) * xStep, R + 20);
+    cny += `<rect x="${xs}" y="${T}" width="${xe - xs}" height="${B - T}" fill="#FFF8E1" opacity="0"><animate attributeName="opacity" from="0" to="0.6" dur="0.8s" begin="0.4s" fill="freeze"/></rect>`;
+    cny += `<text x="${(xs + xe) / 2}" y="16" text-anchor="middle" font-size="11" fill="#B8860B" font-weight="600">CNY Peak</text>`;
+  }
+  document.getElementById('chart-cny').innerHTML = cny;
+
+  document.getElementById('forecast-table-body').innerHTML = data.map((d, i) => {
+    const inRange = d.ord >= d.low && d.ord <= d.high;
+    return `<tr class="row-in" style="--r:${i}"><td>${d.date}</td><td>${d.low}–${d.high}</td><td>${fmt(d.ord)}</td><td class="${inRange ? 'yes' : 'no'}">${inRange ? 'Yes' : 'No'}</td></tr>`;
+  }).join('');
+  document.getElementById('table-footer-text').innerText =
+    `Showing next ${tf === '3M' ? 3 : tf === '6M' ? 6 : 12} months. Ordered quantity = orders logged, grouped by order date.` +
+    (ordersOutside ? ` ${ordersOutside} order${ordersOutside === 1 ? '' : 's'} dated outside this window not shown.` : '');
+  setupTooltips(xStep, L);
+}
+
+function setupTooltips(xStep, L) {
+  const tip = document.getElementById('tooltip'), tr = document.getElementById('trackerLine');
+  const wrap = document.getElementById('chartWrap'), svg = document.getElementById('forecastChart');
+  document.querySelectorAll('#hover-zones rect').forEach(z => {
+    z.addEventListener('mouseenter', e => {
+      const idx = parseInt(e.target.getAttribute('data-index')), d = currentData[idx];
+      document.getElementById('tt-title').innerText = d.date;
+      document.getElementById('tt-ord').innerText = fmt(d.ord);
+      document.getElementById('tt-low').innerText = d.low;
+      document.getElementById('tt-high').innerText = d.high;
+      const sr = svg.getBoundingClientRect(), wr = wrap.getBoundingClientRect();
+      const lp = sr.left - wr.left + ((L + idx * xStep) / 720) * sr.width;
+      tr.style.left = `${lp}px`; tr.classList.add('visible');
+      let tl = lp + 15; if (tl + 150 > wr.width) tl = lp - 160;
+      tip.style.left = `${tl}px`; tip.style.top = '20px'; tip.classList.add('visible');
+    });
+    z.addEventListener('mouseleave', () => { tip.classList.remove('visible'); tr.classList.remove('visible'); });
+  });
+}
+
+/* =====================================================
+   DATA ENTRY
+   ===================================================== */
+const SCHEMAS = {
+  orders: {
+    label: 'Order', prefix: 'ORD', title: 'Log an order',
+    blurb: 'Record a purchase order. Its quantity adds to the dashboard chart (by order date) and to in-transit units until deliveries are logged.',
+    fields: [
+      { key: 'id',        label: 'Order ID',         type: 'text',   ph: 'Auto-generated if blank' },
+      { key: 'orderDate', label: 'Order date',       type: 'date',   req: true, today: true },
+      { key: 'qty',       label: 'Quantity (units)', type: 'number', req: true },
+      { key: 'eta',       label: 'Expected arrival', type: 'date',   req: true },
+      { key: 'mode',      label: 'Transport mode',   type: 'select', options: ['Sea', 'Air', 'Road', 'Rail'], req: true },
+      { key: 'notes',     label: 'Notes',            type: 'textarea', wide: true }
+    ],
+    cols: ['id', 'orderDate', 'qty', 'eta', 'mode']
+  },
+  deliveries: {
+    label: 'Delivery', prefix: 'DEL', title: 'Log a delivery',
+    blurb: 'Record goods received. Use the matching Order ID so in-transit units update. Damaged goods are not counted as stock.',
+    fields: [
+      { key: 'id',           label: 'Delivery ID',       type: 'text',   ph: 'Auto-generated if blank' },
+      { key: 'orderId',      label: 'Order ID',          type: 'text',   req: true, ph: 'e.g. ORD-20261101-01' },
+      { key: 'receivedDate', label: 'Received date',     type: 'date',   req: true, today: true },
+      { key: 'qty',          label: 'Quantity received', type: 'number', req: true },
+      { key: 'batchId',      label: 'Batch ID',          type: 'text',   req: true },
+      { key: 'expiry',       label: 'Expiry date',       type: 'date' },
+      { key: 'condition',    label: 'Condition',         type: 'select', options: ['Good', 'Partial', 'Damaged'], req: true },
+      { key: 'notes',        label: 'Notes',             type: 'textarea', wide: true }
+    ],
+    cols: ['id', 'orderId', 'receivedDate', 'qty', 'batchId', 'expiry', 'condition']
+  },
+  dispatches: {
+    label: 'Dispatch', prefix: 'DSP', title: 'Log a dispatch',
+    blurb: 'Record stock sent out. Include the Batch ID to reduce that batch on the expiry list.',
+    fields: [
+      { key: 'id',           label: 'Dispatch ID',      type: 'text',   ph: 'Auto-generated if blank' },
+      { key: 'dispatchDate', label: 'Dispatch date',    type: 'date',   req: true, today: true },
+      { key: 'destination',  label: 'Customer / Destination', type: 'text', req: true },
+      { key: 'qty',          label: 'Quantity (units)', type: 'number', req: true },
+      { key: 'batchId',      label: 'Batch ID',         type: 'text' },
+      { key: 'reference',    label: 'Reference / Invoice no.', type: 'text' },
+      { key: 'notes',        label: 'Notes',            type: 'textarea', wide: true }
+    ],
+    cols: ['id', 'dispatchDate', 'destination', 'qty', 'batchId', 'reference']
+  }
+};
+
+let activeSec = 'orders', lastAdded = null, pendingSec = 'orders';
+
+function toast(msg, isError) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.toggle('error', !!isError); t.classList.add('show');
+  clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.remove('show'), 3200);
+}
+function genId(sec) {
+  const p = SCHEMAS[sec].prefix, d = todayISO().replace(/-/g, '');
+  let n = records[sec].filter(r => r.id.startsWith(`${p}-${d}`)).length + 1, id;
+  do { id = `${p}-${d}-${String(n++).padStart(2, '0')}`; } while (records[sec].some(r => r.id === id));
+  return id;
+}
+function fieldHTML(sec, f) {
+  const id = `${sec}-${f.key}`, req = f.req ? '<span class="req">*</span>' : '';
+  let input;
+  if (f.type === 'select') input = `<select id="${id}" name="${f.key}"><option value="">Select…</option>${f.options.map(o => `<option>${o}</option>`).join('')}</select>`;
+  else if (f.type === 'textarea') input = `<textarea id="${id}" name="${f.key}" rows="2"></textarea>`;
+  else input = `<input id="${id}" name="${f.key}" type="${f.type}" ${f.type === 'number' ? 'min="0" step="1"' : ''} ${f.ph ? `placeholder="${f.ph}"` : ''} ${f.today ? `value="${todayISO()}"` : ''}>`;
+  return `<div class="field ${f.wide ? 'wide' : ''}" data-key="${f.key}"><label for="${id}">${f.label}${req}</label>${input}</div>`;
+}
+
+function renderSections() {
+  document.getElementById('sections').innerHTML = Object.keys(SCHEMAS).map(sec => {
+    const s = SCHEMAS[sec];
+    return `
+    <div class="section-view ${sec === activeSec ? 'active' : ''}" id="sec-${sec}">
+      <div class="entry-grid">
+        <div class="card static">
+          <div class="card-header"><div class="card-title">${s.title}</div></div>
+          <p style="color:var(--grey);font-size:12px;margin-bottom:16px">${s.blurb}</p>
+          <form id="form-${sec}" novalidate>
+            <div class="form-grid">${s.fields.map(f => fieldHTML(sec, f)).join('')}</div>
+            <div class="form-actions">
+              <button type="submit" class="btn primary">Add ${s.label.toLowerCase()}</button>
+              <button type="button" class="btn ghost" data-reset="${sec}">Clear</button>
+            </div>
+          </form>
+        </div>
+        <div class="card static">
+          <div class="card-header"><div class="card-title">Upload from Excel</div></div>
+          <div class="dropzone" data-drop="${sec}">
+            <div class="dz-icon">📄</div>
+            <div class="dz-title">Drop a spreadsheet here, or click to browse</div>
+            <div class="dz-sub">.xlsx, .xls or .csv · first sheet is read · first row must be headers</div>
+          </div>
+          <div class="upload-meta"><button class="btn ghost small" data-template="${sec}">⬇ Download template</button></div>
+          <div class="hint">
+            Expected columns: ${s.fields.filter(f => f.key !== 'notes').map(f => `<code>${f.label}</code>`).join(' ')} <code>Notes</code><br>
+            Rows missing required fields are skipped. Blank IDs are generated automatically.
+          </div>
+        </div>
+      </div>
+      <div class="card static">
+        <div class="log-head">
+          <div class="card-title">Logged ${s.label.toLowerCase()}s</div>
+          <div style="display:flex;gap:8px">
+            <button class="btn ghost small" data-export="${sec}">⬇ Export Excel</button>
+            <button class="btn ghost small" data-clear="${sec}">Clear all</button>
+          </div>
+        </div>
+        <div class="table-scroll" id="table-${sec}"></div>
+      </div>
+    </div>`;
+  }).join('');
+  Object.keys(SCHEMAS).forEach(renderTable);
+  updateCounts();
+  bindEntryEvents();
+}
+
+function renderTable(sec) {
+  const s = SCHEMAS[sec], rows = records[sec], el = document.getElementById('table-' + sec);
+  if (!rows.length) { el.innerHTML = `<div class="empty">No ${s.label.toLowerCase()}s logged yet. Add one with the form or upload a spreadsheet.</div>`; return; }
+  const labels = Object.fromEntries(s.fields.map(f => [f.key, f.label]));
+  el.innerHTML = `<table><thead><tr>${s.cols.map(c => `<th>${labels[c]}</th>`).join('')}<th></th></tr></thead><tbody>${
+    [...rows].reverse().map(r => `<tr class="${r.id === lastAdded ? 'new-row' : ''}">${
+      s.cols.map(c => `<td>${esc(c === 'qty' ? fmt(r[c]) : r[c])}</td>`).join('')
+    }<td><button class="del" title="Delete" data-del="${sec}|${esc(r.id)}">×</button></td></tr>`).join('')
+  }</tbody></table>`;
+}
+function updateCounts() { Object.keys(SCHEMAS).forEach(sec => document.getElementById('count-' + sec).textContent = records[sec].length); }
+function addRecord(sec, rec) { if (!rec.id) rec.id = genId(sec); records[sec].push(rec); lastAdded = rec.id; }
+
+function bindEntryEvents() {
+  Object.keys(SCHEMAS).forEach(sec => {
+    const form = document.getElementById('form-' + sec);
+    form.addEventListener('submit', e => {
+      e.preventDefault();
+      const s = SCHEMAS[sec]; let ok = true; const rec = {};
+      s.fields.forEach(f => {
+        const wrap = form.querySelector(`[data-key="${f.key}"]`), v = form.elements[f.key].value.trim();
+        wrap.classList.remove('invalid'); void wrap.offsetWidth;
+        if (f.req && !v) { wrap.classList.add('invalid'); ok = false; }
+        rec[f.key] = v;
+      });
+      if (rec.id && records[sec].some(r => r.id === rec.id)) { toast(`${s.label} ID ${rec.id} already exists.`, true); return; }
+      if (!ok) { toast('Please fill in the highlighted fields.', true); return; }
+      addRecord(sec, rec); persist(); renderTable(sec); updateCounts();
+      resetForm(sec); toast(`${s.label} ${rec.id} logged.`);
+    });
+    form.querySelectorAll('input,select').forEach(i => i.addEventListener('input', () => i.closest('.field').classList.remove('invalid')));
+  });
+  document.querySelectorAll('[data-reset]').forEach(b => b.addEventListener('click', () => resetForm(b.dataset.reset)));
+  document.querySelectorAll('[data-template]').forEach(b => b.addEventListener('click', () => downloadTemplate(b.dataset.template)));
+  document.querySelectorAll('[data-export]').forEach(b => b.addEventListener('click', () => exportRecords(b.dataset.export)));
+  document.querySelectorAll('[data-clear]').forEach(b => b.addEventListener('click', () => {
+    const sec = b.dataset.clear;
+    if (records[sec].length && confirm(`Delete all ${records[sec].length} logged ${SCHEMAS[sec].label.toLowerCase()}s?`)) {
+      records[sec] = []; persist(); renderTable(sec); updateCounts();
+    }
+  }));
+  document.getElementById('sections').addEventListener('click', e => {
+    const d = e.target.closest('[data-del]'); if (!d) return;
+    const [sec, id] = d.dataset.del.split('|');
+    records[sec] = records[sec].filter(r => r.id !== id); persist(); renderTable(sec); updateCounts();
+  });
+  document.querySelectorAll('.dropzone').forEach(dz => {
+    const sec = dz.dataset.drop;
+    dz.addEventListener('click', () => { pendingSec = sec; document.getElementById('fileInput').click(); });
+    ['dragenter', 'dragover'].forEach(ev => dz.addEventListener(ev, e => { e.preventDefault(); dz.classList.add('drag'); }));
+    ['dragleave', 'drop'].forEach(ev => dz.addEventListener(ev, e => { e.preventDefault(); dz.classList.remove('drag'); }));
+    dz.addEventListener('drop', e => { if (e.dataTransfer.files[0]) importFile(sec, e.dataTransfer.files[0]); });
+  });
+}
+function resetForm(sec) {
+  const form = document.getElementById('form-' + sec);
+  form.reset();
+  form.querySelectorAll('.invalid').forEach(x => x.classList.remove('invalid'));
+  SCHEMAS[sec].fields.filter(f => f.today).forEach(f => form.elements[f.key].value = todayISO());
+}
+
+/* ---------- Excel import / export ---------- */
+document.getElementById('fileInput').addEventListener('change', e => {
+  const f = e.target.files[0]; if (f) importFile(pendingSec, f); e.target.value = '';
+});
+function cellToString(v) {
+  if (v instanceof Date) return new Date(v.getTime() + 12 * 3600 * 1000).toISOString().slice(0, 10);
+  return v === null || v === undefined ? '' : String(v).trim();
+}
+function importFile(sec, file) {
+  if (typeof XLSX === 'undefined') { toast('Excel library could not load (are you offline?).', true); return; }
+  const reader = new FileReader();
+  reader.onload = ev => {
+    try {
+      const wb = XLSX.read(new Uint8Array(ev.target.result), { type: 'array', cellDates: true });
+      const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { defval: '', raw: true });
+      if (!rows.length) { toast('The file has no data rows.', true); return; }
+      const s = SCHEMAS[sec], map = {};
+      s.fields.forEach(f => { map[norm(f.label)] = f; map[norm(f.key)] = f; });
+      let added = 0, skipped = 0, dupes = 0;
+      rows.forEach(row => {
+        const rec = {};
+        Object.keys(row).forEach(h => { const f = map[norm(h)]; if (f) rec[f.key] = cellToString(row[h]); });
+        s.fields.forEach(f => { if (rec[f.key] === undefined) rec[f.key] = ''; });
+        if (s.fields.some(f => f.req && !rec[f.key])) { skipped++; return; }
+        if (rec.id && records[sec].some(r => r.id === rec.id)) { dupes++; return; }
+        addRecord(sec, rec); added++;
+      });
+      persist(); renderTable(sec); updateCounts();
+      const extra = [skipped && `${skipped} skipped (missing required fields)`, dupes && `${dupes} duplicate ID${dupes > 1 ? 's' : ''} ignored`].filter(Boolean).join(', ');
+      toast(`${added} ${s.label.toLowerCase()}${added === 1 ? '' : 's'} imported${extra ? ' · ' + extra : ''}.`, added === 0);
+    } catch (err) { toast('Could not read that file. Use .xlsx, .xls or .csv.', true); }
+  };
+  reader.readAsArrayBuffer(file);
+}
+function downloadTemplate(sec) {
+  if (typeof XLSX === 'undefined') { toast('Excel library could not load (are you offline?).', true); return; }
+  const s = SCHEMAS[sec], ws = XLSX.utils.aoa_to_sheet([s.fields.map(f => f.label)]);
+  ws['!cols'] = s.fields.map(f => ({ wch: Math.max(14, f.label.length + 4) }));
+  const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, s.label + 's');
+  XLSX.writeFile(wb, `${sec}_template.xlsx`);
+}
+function exportRecords(sec) {
+  if (typeof XLSX === 'undefined') { toast('Excel library could not load (are you offline?).', true); return; }
+  if (!records[sec].length) { toast('Nothing to export yet.', true); return; }
+  const s = SCHEMAS[sec];
+  const aoa = [s.fields.map(f => f.label), ...records[sec].map(r => s.fields.map(f => r[f.key] ?? ''))];
+  const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(aoa), s.label + 's');
+  XLSX.writeFile(wb, `${sec}_${todayISO()}.xlsx`);
+}
+document.getElementById('seg').addEventListener('click', e => {
+  const b = e.target.closest('.seg-btn'); if (!b) return;
+  activeSec = b.dataset.sec;
+  document.querySelectorAll('.seg-btn').forEach(x => x.classList.toggle('active', x === b));
+  document.querySelectorAll('.section-view').forEach(v => v.classList.toggle('active', v.id === 'sec-' + activeSec));
+  movePill('segPill', b, 4);
+});
+
+/* ---------- init ---------- */
+renderSections();
+renderDashboard();
+if ((location.hash || '') === '#entry') showPage('entry'); else movePill('navPill', document.querySelector('.nav-btn.active'), 3);
+window.addEventListener('resize', () => {
+  movePill('navPill', document.querySelector('.nav-btn.active'), 3);
+  movePill('togglePill', document.querySelector('.toggle-btn.active'), 3);
+  movePill('segPill', document.querySelector('.seg-btn.active'), 4);
+});
+</script>
+</body>
+</html>
