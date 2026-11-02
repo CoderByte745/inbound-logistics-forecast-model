@@ -955,7 +955,7 @@ const SCHEMAS = {
       { key: 'orderDate', label: 'Order date',       type: 'date',   req: true, today: true },
       { key: 'qty',       label: 'Quantity (units)', type: 'number', req: true, rec: true },
       { key: 'eta',       label: 'Expected arrival', type: 'date',   req: true },
-      { key: 'mode',      label: 'Transport mode',   type: 'select', options: ['Sea', 'Air', 'Road', 'Rail'], req: true },
+      { key: 'mode',      label: 'Transport mode',   type: 'select', options: ['Sea', 'Air'], req: true },
       { key: 'notes',     label: 'Notes',            type: 'textarea', wide: true }
     ],
     cols: ['id', 'orderDate', 'qty', 'eta', 'mode']
